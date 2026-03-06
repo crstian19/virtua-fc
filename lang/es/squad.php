@@ -37,6 +37,13 @@ return [
     'list_for_sale' => 'Poner a la Venta',
     'unlist_from_sale' => 'Retirar de la Venta',
     'loan_out' => 'Ceder',
+    'release_player' => 'Liberar',
+    'release_confirm_title' => 'Liberar Jugador',
+    'release_confirm_message' => '¿Estás seguro de que quieres liberar a :player? Esta acción no se puede deshacer.',
+    'release_severance_label' => 'Coste de indemnización',
+    'release_remaining_contract' => 'Contrato restante',
+    'release_years_remaining' => ':years año(s)',
+    'release_confirm_button' => 'Confirmar Liberación',
     'loan_searching' => 'Buscando destino de cesión',
 
     // Summary

@@ -37,6 +37,13 @@ return [
     'list_for_sale' => 'List for Sale',
     'unlist_from_sale' => 'Remove from Sale',
     'loan_out' => 'Loan Out',
+    'release_player' => 'Release',
+    'release_confirm_title' => 'Release Player',
+    'release_confirm_message' => 'Are you sure you want to release :player? This action cannot be undone.',
+    'release_severance_label' => 'Severance cost',
+    'release_remaining_contract' => 'Remaining contract',
+    'release_years_remaining' => ':years year(s)',
+    'release_confirm_button' => 'Confirm Release',
     'loan_searching' => 'Searching for loan destination',
 
     // Summary

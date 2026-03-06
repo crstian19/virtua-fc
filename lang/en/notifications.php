@@ -114,6 +114,11 @@ return [
     'ai_transfer_window_summer' => 'Summer',
     'ai_transfer_window_winter' => 'Winter',
 
+    // Player released
+    'player_released_title' => ':player released',
+    'player_released_message' => ':player has been released from your squad. Severance paid: :severance.',
+    'player_released_message_free' => ':player has been released from your squad.',
+
     // Renewal negotiations
     'renewal_accepted_title' => ':player accepts renewal',
     'renewal_accepted_message' => ':player has accepted the renewal for :wage/yr over :years years.',

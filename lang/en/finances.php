@@ -160,9 +160,12 @@ return [
     'category_performance_bonus' => 'Performance Bonus',
     'category_signing_bonus' => 'Signing Bonus',
 
+    'category_severance' => 'Severance',
+
     // Transaction descriptions
     'tx_free_transfer_out' => ':player left on free transfer to :team',
     'tx_player_sold' => ':player sold to :team',
     'tx_player_signed' => ':player signed from :team',
+    'tx_player_released' => ':player released (severance)',
     'tx_cup_advancement' => ':competition - Round :round advancement',
 ];

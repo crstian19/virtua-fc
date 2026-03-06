@@ -85,6 +85,15 @@ return [
     'academy_over_capacity' => 'The academy is over capacity. You must free :excess place(s).',
     'academy_must_decide_21' => 'Players aged 21+ must be promoted or dismissed.',
 
+    // Player release messages
+    'player_released' => ':player has been released. Severance paid: :severance.',
+    'release_not_your_player' => 'You can only release players from your own team.',
+    'release_on_loan' => 'Cannot release a player who is on loan.',
+    'release_has_agreed_transfer' => 'Cannot release a player with an agreed transfer.',
+    'release_has_pre_contract' => 'Cannot release a player with a pre-contract agreement.',
+    'release_squad_too_small' => 'Cannot release — your squad must have at least :min players.',
+    'release_position_minimum' => 'Cannot release — you need at least :min :group.',
+
     // Pending actions
     'action_required' => 'There are pending actions you must resolve before continuing.',
     'action_required_short' => 'Action Required',

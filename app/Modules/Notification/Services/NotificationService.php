@@ -718,6 +718,28 @@ class NotificationService
     }
 
     // ==========================================
+    // Player Release Notifications
+    // ==========================================
+
+    /**
+     * Create a notification when a player is released from the squad.
+     */
+    public function notifyPlayerReleased(Game $game, string $playerName, int $severance): GameNotification
+    {
+        $formattedSeverance = \App\Support\Money::format($severance);
+
+        return $this->create(
+            game: $game,
+            type: GameNotification::TYPE_PLAYER_RELEASED,
+            title: __('notifications.player_released_title', ['player' => $playerName]),
+            message: $severance > 0
+                ? __('notifications.player_released_message', ['player' => $playerName, 'severance' => $formattedSeverance])
+                : __('notifications.player_released_message_free', ['player' => $playerName]),
+            priority: GameNotification::PRIORITY_INFO,
+        );
+    }
+
+    // ==========================================
     // Helpers
     // ==========================================
 
@@ -750,6 +772,7 @@ class NotificationService
             GameNotification::TYPE_TOURNAMENT_WELCOME => 'trophy',
             GameNotification::TYPE_AI_TRANSFER_ACTIVITY => 'transfer',
             GameNotification::TYPE_TRANSFER_WINDOW_OPEN => 'transfer',
+            GameNotification::TYPE_PLAYER_RELEASED => 'transfer_complete',
             default => 'bell',
         };
     }

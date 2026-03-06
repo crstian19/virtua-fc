@@ -85,6 +85,15 @@ return [
     'academy_over_capacity' => 'La cantera supera la capacidad. Debes liberar :excess plaza(s).',
     'academy_must_decide_21' => 'Los jugadores de 21+ años deben ser subidos o despedidos.',
 
+    // Player release messages
+    'player_released' => ':player ha sido liberado. Indemnización pagada: :severance.',
+    'release_not_your_player' => 'Solo puedes liberar jugadores de tu propio equipo.',
+    'release_on_loan' => 'No se puede liberar a un jugador cedido.',
+    'release_has_agreed_transfer' => 'No se puede liberar a un jugador con un traspaso acordado.',
+    'release_has_pre_contract' => 'No se puede liberar a un jugador con un precontrato firmado.',
+    'release_squad_too_small' => 'No se puede liberar — tu plantilla debe tener al menos :min jugadores.',
+    'release_position_minimum' => 'No se puede liberar — necesitas al menos :min :group.',
+
     // Pending actions
     'action_required' => 'Hay acciones pendientes que debes resolver antes de continuar.',
     'action_required_short' => 'Acción Requerida',

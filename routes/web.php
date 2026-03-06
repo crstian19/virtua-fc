@@ -26,6 +26,7 @@ use App\Http\Actions\InitGame;
 use App\Http\Actions\ListPlayerForTransfer;
 use App\Http\Actions\AcceptRenewalCounter;
 use App\Http\Actions\SubmitRenewalOffer;
+use App\Http\Actions\ReleasePlayer;
 use App\Http\Actions\RejectTransferOffer;
 use App\Http\Actions\RequestLoan;
 use App\Http\Actions\SaveLineup;
@@ -130,6 +131,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/game/{gameId}/transfers/accept-counter/{playerId}', AcceptRenewalCounter::class)->name('game.transfers.accept-renewal-counter');
         Route::post('/game/{gameId}/transfers/decline-renewal/{playerId}', DeclineRenewal::class)->name('game.transfers.decline-renewal');
         Route::post('/game/{gameId}/transfers/reconsider-renewal/{playerId}', ReconsiderRenewal::class)->name('game.transfers.reconsider-renewal');
+        Route::post('/game/{gameId}/squad/release/{playerId}', ReleasePlayer::class)->name('game.squad.release');
 
         // Scouting
         Route::get('/game/{gameId}/scouting', ShowScoutingHub::class)->name('game.scouting');

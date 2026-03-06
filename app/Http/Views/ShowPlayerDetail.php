@@ -44,6 +44,19 @@ class ShowPlayerDetail
             }
         }
 
+        // Release data
+        $canRelease = $game->isCareerMode()
+            && $gamePlayer->team_id === $game->team_id
+            && !$gamePlayer->isRetiring()
+            && !$gamePlayer->isLoanedIn($game->team_id)
+            && !$gamePlayer->isLoanedOut($game->team_id)
+            && !$gamePlayer->hasPreContractAgreement()
+            && !$gamePlayer->hasRenewalAgreed()
+            && !$gamePlayer->hasAgreedTransfer()
+            && !$gamePlayer->hasActiveLoanSearch();
+
+        $severance = $canRelease ? $this->contractService->calculateSeverance($game, $gamePlayer) : 0;
+
         return view('partials.player-detail', [
             'game' => $game,
             'gamePlayer' => $gamePlayer,
@@ -52,6 +65,8 @@ class ShowPlayerDetail
             'renewalDemand' => $renewalDemand,
             'renewalMidpoint' => $renewalMidpoint,
             'renewalMood' => $renewalMood,
+            'canRelease' => $canRelease,
+            'severance' => $severance,
         ]);
     }
 }

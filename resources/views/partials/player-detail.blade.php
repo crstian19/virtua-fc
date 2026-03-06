@@ -270,6 +270,53 @@
                     </button>
                 </form>
             @endif
+            @if($canRelease ?? false)
+                <div x-data="{ showReleaseConfirm: false }">
+                    <button @click="showReleaseConfirm = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 transition-colors min-h-[44px]">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" /></svg>
+                        {{ __('squad.release_player') }}
+                    </button>
+
+                    {{-- Release confirmation overlay --}}
+                    <template x-teleport="body">
+                        <div x-show="showReleaseConfirm" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div x-show="showReleaseConfirm" x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" @click="showReleaseConfirm = false" class="fixed inset-0 bg-slate-800/90"></div>
+                            <div x-show="showReleaseConfirm" x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="relative bg-white rounded-xl shadow-xl max-w-sm w-full p-6 z-10" @keydown.escape.window="showReleaseConfirm = false">
+                                <h3 class="text-lg font-semibold text-slate-900 mb-3">{{ __('squad.release_confirm_title') }}</h3>
+                                <p class="text-sm text-slate-600 mb-4">{{ __('squad.release_confirm_message', ['player' => $gamePlayer->name]) }}</p>
+
+                                <div class="space-y-2 mb-5 p-3 bg-slate-50 rounded-lg">
+                                    @if($gamePlayer->contract_until)
+                                        @php
+                                            $remainingYears = max(0, round($game->current_date->floatDiffInYears($gamePlayer->contract_until), 1));
+                                        @endphp
+                                        <div class="flex justify-between text-sm">
+                                            <span class="text-slate-500">{{ __('squad.release_remaining_contract') }}</span>
+                                            <span class="font-semibold text-slate-900">{{ __('squad.release_years_remaining', ['years' => $remainingYears]) }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-slate-500">{{ __('squad.release_severance_label') }}</span>
+                                        <span class="font-semibold text-red-600">{{ \App\Support\Money::format($severance) }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3">
+                                    <button @click="showReleaseConfirm = false" type="button" class="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 transition-colors min-h-[44px]">
+                                        {{ __('app.cancel') }}
+                                    </button>
+                                    <form method="POST" action="{{ route('game.squad.release', [$game->id, $gamePlayer->id]) }}" class="flex-1">
+                                        @csrf
+                                        <button type="submit" class="w-full px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors min-h-[44px]">
+                                            {{ __('squad.release_confirm_button') }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            @endif
             @if($canRenew)
                 <x-renewal-modal
                     :game="$game"

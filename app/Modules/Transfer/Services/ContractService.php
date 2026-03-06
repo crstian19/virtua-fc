@@ -3,12 +3,16 @@
 namespace App\Modules\Transfer\Services;
 
 use App\Models\Competition;
+use App\Models\FinancialTransaction;
 use App\Models\Game;
+use App\Models\GameNotification;
 use App\Models\GamePlayer;
 use App\Models\RenewalNegotiation;
 use App\Models\Team;
 use App\Models\TransferOffer;
+use App\Modules\Notification\Services\NotificationService;
 use App\Support\Money;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -775,5 +779,163 @@ class ContractService
         }
 
         return $stale->count();
+    }
+
+    // =========================================
+    // PLAYER RELEASE (CONTRACT TERMINATION)
+    // =========================================
+
+    /**
+     * Severance rate: fraction of remaining contract wages paid as compensation.
+     */
+    private const SEVERANCE_RATE = 0.50;
+
+    /**
+     * Minimum squad size — cannot release if it would drop below this.
+     */
+    private const MIN_SQUAD_SIZE = 20;
+
+    /**
+     * Minimum players per position group — mirrors SquadReplenishmentProcessor.
+     */
+    private const POSITION_GROUP_MINIMUMS = [
+        'Goalkeeper' => 2,
+        'Defender' => 5,
+        'Midfielder' => 5,
+        'Forward' => 3,
+    ];
+
+    /**
+     * Release a player from the user's squad (unilateral contract termination).
+     *
+     * The player becomes a free agent (team_id = null) and the club pays
+     * severance equal to 50% of remaining contract wages.
+     *
+     * @return array{error?: string, playerName?: string, severance?: int, formattedSeverance?: string}
+     */
+    public function releasePlayer(Game $game, GamePlayer $player): array
+    {
+        $playerName = $player->name;
+
+        // Eligibility checks
+        if ($error = $this->validateRelease($game, $player)) {
+            return ['error' => $error];
+        }
+
+        // Calculate severance
+        $severance = $this->calculateSeverance($game, $player);
+
+        // Record severance as a financial transaction
+        if ($severance > 0) {
+            FinancialTransaction::recordExpense(
+                gameId: $game->id,
+                category: FinancialTransaction::CATEGORY_SEVERANCE,
+                amount: $severance,
+                description: __('finances.tx_player_released', ['player' => $playerName]),
+                transactionDate: $game->current_date,
+                relatedPlayerId: $player->id,
+            );
+        }
+
+        // Release the player to the free agent pool
+        $player->update([
+            'team_id' => null,
+            'number' => null,
+            'transfer_status' => null,
+            'transfer_listed_at' => null,
+        ]);
+
+        // Cancel any active renewal negotiations
+        $activeNegotiation = $player->activeRenewalNegotiation;
+        if ($activeNegotiation) {
+            $activeNegotiation->update(['status' => RenewalNegotiation::STATUS_EXPIRED]);
+        }
+
+        // Send notification
+        app(NotificationService::class)->notifyPlayerReleased(
+            $game,
+            $playerName,
+            $severance,
+        );
+
+        return [
+            'playerName' => $playerName,
+            'severance' => $severance,
+            'formattedSeverance' => Money::format($severance),
+        ];
+    }
+
+    /**
+     * Validate whether a player can be released.
+     *
+     * @return string|null Error message, or null if valid
+     */
+    private function validateRelease(Game $game, GamePlayer $player): ?string
+    {
+        // Must belong to the user's team
+        if ($player->team_id !== $game->team_id) {
+            return __('messages.release_not_your_player');
+        }
+
+        // Cannot release players on loan
+        if ($player->isLoanedOut($game->team_id) || $player->isLoanedIn($game->team_id)) {
+            return __('messages.release_on_loan');
+        }
+
+        // Cannot release players with agreed transfers
+        if ($player->hasAgreedTransfer()) {
+            return __('messages.release_has_agreed_transfer');
+        }
+
+        // Cannot release players with pre-contract agreements
+        if ($player->hasPreContractAgreement()) {
+            return __('messages.release_has_pre_contract');
+        }
+
+        // Squad size check
+        $currentSquadSize = GamePlayer::where('game_id', $game->id)
+            ->where('team_id', $game->team_id)
+            ->count();
+
+        if ($currentSquadSize <= self::MIN_SQUAD_SIZE) {
+            return __('messages.release_squad_too_small', ['min' => self::MIN_SQUAD_SIZE]);
+        }
+
+        // Position group minimum check
+        $positionGroup = $player->position_group;
+        $groupMinimum = self::POSITION_GROUP_MINIMUMS[$positionGroup] ?? 0;
+
+        if ($groupMinimum > 0) {
+            $groupCount = GamePlayer::where('game_id', $game->id)
+                ->where('team_id', $game->team_id)
+                ->get()
+                ->filter(fn ($p) => $p->position_group === $positionGroup)
+                ->count();
+
+            if ($groupCount <= $groupMinimum) {
+                return __('messages.release_position_minimum', [
+                    'group' => __('squad.' . strtolower($positionGroup) . 's'),
+                    'min' => $groupMinimum,
+                ]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Calculate severance pay for releasing a player.
+     *
+     * Severance = remaining contract years x annual wage x severance rate (50%).
+     */
+    public function calculateSeverance(Game $game, GamePlayer $player): int
+    {
+        if (!$player->contract_until || !$player->annual_wage) {
+            return 0;
+        }
+
+        $remainingYears = max(0, $game->current_date->floatDiffInYears($player->contract_until));
+
+        return (int) ($player->annual_wage * $remainingYears * self::SEVERANCE_RATE);
     }
 }

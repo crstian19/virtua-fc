@@ -160,9 +160,12 @@ return [
     'category_performance_bonus' => 'Bonus de Rendimiento',
     'category_signing_bonus' => 'Prima de Fichaje',
 
+    'category_severance' => 'Indemnización',
+
     // Transaction descriptions
     'tx_free_transfer_out' => ':player se fue libre a :team',
     'tx_player_sold' => ':player vendido a :team',
     'tx_player_signed' => ':player fichado de :team',
+    'tx_player_released' => ':player liberado (indemnización)',
     'tx_cup_advancement' => ':competition - Ronda :round superada',
 ];

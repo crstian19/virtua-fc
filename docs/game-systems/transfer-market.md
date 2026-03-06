@@ -1,16 +1,17 @@
 # Transfer Market System
 
-How players are bought, sold, loaned, and contracted.
+How players are bought, sold, loaned, released, and contracted.
 
 ## Components
 
-The transfer market has five interconnected parts:
+The transfer market has six interconnected parts:
 
 1. **Scouting** — Search for players from other clubs
 2. **Buying** — Bid on scouted players with counter-offer negotiation
 3. **Selling** — List players and receive AI offers
 4. **Loans** — Bidirectional loan system (in and out)
 5. **Contracts** — Renewals, pre-contracts, and free transfers
+6. **Player Release** — Unilateral contract termination by the club
 
 ## Scouting
 
@@ -51,6 +52,28 @@ Multi-round negotiation. The player's **disposition** (flexibility) is influence
 ### Pre-Contracts
 
 From the winter window onward, AI clubs can approach players with expiring contracts. These are free transfers (no fee) that complete at season end.
+
+## Player Release
+
+The user can unilaterally terminate a player's contract at any time during the season (no transfer window required). The player becomes a free agent and may be signed by AI teams when the next transfer window closes.
+
+### Severance
+
+The club pays **50% of remaining contract wages** as severance. For example, a player earning €2M/year with 2 years left costs €2M in severance. The payment is recorded as a `FinancialTransaction` (category: `severance`).
+
+### Eligibility
+
+A release is blocked when:
+- The player is on loan (in or out)
+- The player has an agreed transfer or pre-contract
+- The squad would drop below **20 players** (matching AI constraints)
+- The position group would drop below its minimum (**2 GK, 5 DEF, 5 MID, 3 FWD**)
+
+### Released player fate
+
+Released players enter the **free agent pool** (`team_id = null`). They can be signed by AI teams via `AITransferMarketService` at the next window close, identical to how expired-contract free agents work.
+
+See `ContractService::releasePlayer()`.
 
 ## Transfer Windows
 
@@ -101,6 +124,6 @@ Four processors handle transfer-related transitions:
 |------|---------|
 | `app/Modules/Transfer/Services/TransferService.php` | Offer generation, pricing, buyer selection |
 | `app/Modules/Transfer/Services/ScoutingService.php` | Search, bid evaluation, asking price |
-| `app/Modules/Transfer/Services/ContractService.php` | Wages, renewal negotiation |
+| `app/Modules/Transfer/Services/ContractService.php` | Wages, renewal negotiation, player release |
 | `app/Modules/Transfer/Services/LoanService.php` | Loan destination scoring, search |
 | `app/Modules/Transfer/Services/AITransferMarketService.php` | AI-to-AI transfer market (window close) |

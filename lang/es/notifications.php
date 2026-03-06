@@ -114,6 +114,11 @@ return [
     'ai_transfer_window_summer' => 'Verano',
     'ai_transfer_window_winter' => 'Invierno',
 
+    // Player released
+    'player_released_title' => ':player liberado',
+    'player_released_message' => ':player ha sido liberado de tu plantilla. Indemnización pagada: :severance.',
+    'player_released_message_free' => ':player ha sido liberado de tu plantilla.',
+
     // Renewal negotiations
     'renewal_accepted_title' => ':player acepta renovar',
     'renewal_accepted_message' => ':player ha aceptado la renovación por :wage/año durante :years años.',
