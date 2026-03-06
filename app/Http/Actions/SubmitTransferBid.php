@@ -29,18 +29,18 @@ class SubmitTransferBid
 
         // Squad size cap
         if (ContractService::isSquadFull($game)) {
-            return redirect()->route('game.transfers', $gameId)
+            return redirect()->back()
                 ->with('error', __('messages.squad_full', ['max' => ContractService::MAX_SQUAD_SIZE]));
         }
 
         try {
             $this->transferService->submitBid($game, $player, $bidAmountCents, $this->scoutingService);
         } catch (\InvalidArgumentException $e) {
-            return redirect()->route('game.transfers', $gameId)
+            return redirect()->back()
                 ->with('error', $e->getMessage());
         }
 
-        return redirect()->route('game.transfers', $gameId)
+        return redirect()->back()
             ->with('success', __('messages.bid_submitted', ['player' => $player->player->name]));
     }
 }

@@ -33,13 +33,13 @@ class RequestLoan
     {
         // Squad size cap
         if (ContractService::isSquadFull($game)) {
-            return redirect()->route('game.transfers', $game->id)
+            return redirect()->back()
                 ->with('error', __('messages.squad_full', ['max' => ContractService::MAX_SQUAD_SIZE]));
         }
 
         $this->loanService->requestLoanIn($game, $player);
 
-        return redirect()->route('game.transfers', $game->id)
+        return redirect()->back()
             ->with('success', __('messages.loan_request_submitted', ['player' => $player->player->name]));
     }
 
@@ -47,25 +47,25 @@ class RequestLoan
     {
         // Check player isn't already on loan
         if ($player->isOnLoan()) {
-            return redirect()->route('game.transfers.outgoing', $game->id)
+            return redirect()->back()
                 ->with('error', __('messages.already_on_loan', ['player' => $player->name]));
         }
 
         // Check player isn't already searching for a loan
         if ($player->hasActiveLoanSearch()) {
-            return redirect()->route('game.transfers.outgoing', $game->id)
+            return redirect()->back()
                 ->with('error', __('messages.loan_search_active', ['player' => $player->name]));
         }
 
         // Check transfer_status isn't already set (e.g. listed for sale)
         if ($player->transfer_status !== null) {
-            return redirect()->route('game.transfers.outgoing', $game->id)
+            return redirect()->back()
                 ->with('error', __('messages.already_on_loan', ['player' => $player->name]));
         }
 
         $this->loanService->startLoanSearch($game, $player);
 
-        return redirect()->route('game.transfers.outgoing', $game->id)
+        return redirect()->back()
             ->with('success', __('messages.loan_search_started', ['player' => $player->name]));
     }
 }
