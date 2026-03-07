@@ -90,14 +90,14 @@ $getZoneClass = function($position) use ($standingsZones, $borderColorMap) {
                                         <th class="font-semibold w-8 py-2.5 px-2">{{ __('game.pts_abbr') }}</th>
                                     </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-slate-100">
+                                    <tbody>
                                     @foreach($standings as $standing)
                                         @php
                                             $isPlayer = $standing->team_id === $game->team_id;
                                             $isFirst = $standing->position === 1;
                                             $zoneClass = $getZoneClass($standing->position);
                                         @endphp
-                                        <tr class="text-sm {{ $zoneClass }} @if($isFirst && $isPlayer) bg-amber-100/80 @elseif($isFirst) bg-amber-50/50 @elseif($isPlayer) bg-amber-50 @endif">
+                                        <tr class="border-b text-sm {{ $zoneClass }} @if($isPlayer) bg-amber-50 @endif">
                                             <td class="whitespace-nowrap text-left px-2 py-1.5 text-slate-900 font-semibold">
                                                 {{ $standing->position }}
                                             </td>

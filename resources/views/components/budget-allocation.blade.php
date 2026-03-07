@@ -66,11 +66,11 @@ $submitLabel = $submitLabel ?? __('finances.confirm_budget_allocation');
          :class="exceedsBudget ? 'bg-red-50 ring-1 ring-red-200' : 'bg-slate-50'">
         <div class="flex items-center gap-2">
             <span class="text-slate-500">{{ __('finances.infrastructure') }}</span>
-            <span class="font-bold" :class="exceedsBudget ? 'text-red-700' : 'text-slate-900'" x-text="formatMoney(infrastructureTotal)"></span>
+            <span class="font-semibold" :class="exceedsBudget ? 'text-red-700' : 'text-slate-900'" x-text="formatMoney(infrastructureTotal)"></span>
         </div>
         <div class="flex items-center gap-2">
             <span class="text-slate-500">{{ __('finances.available_remaining') }}</span>
-            <span class="font-bold" :class="exceedsBudget ? 'text-red-600' : 'text-green-600'" x-text="exceedsBudget ? '-' + formatMoney(infrastructureTotal - availableSurplus) : formatMoney(availableSurplus - infrastructureTotal)"></span>
+            <span class="font-semibold" :class="exceedsBudget ? 'text-red-600' : 'text-green-600'" x-text="exceedsBudget ? '-' + formatMoney(infrastructureTotal - availableSurplus) : formatMoney(availableSurplus - infrastructureTotal)"></span>
         </div>
     </div>
 

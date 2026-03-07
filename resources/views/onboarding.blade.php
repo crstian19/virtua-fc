@@ -79,7 +79,7 @@
                         <p class="text-sm text-slate-500">{{ __('game.allocate_budget_hint') }}</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-2xl font-bold text-slate-900">{{ \App\Support\Money::format($availableSurplus) }}</div>
+                        <div class="text-2xl font-semibold text-slate-900">{{ \App\Support\Money::format($availableSurplus) }}</div>
                         <div class="text-xs text-slate-500">{{ __('game.available') }}</div>
                     </div>
                 </div>
