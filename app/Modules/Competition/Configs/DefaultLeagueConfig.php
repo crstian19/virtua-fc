@@ -3,6 +3,7 @@
 namespace App\Modules\Competition\Configs;
 
 use App\Modules\Competition\Contracts\CompetitionConfig;
+use App\Modules\Competition\Contracts\HasSeasonGoals;
 use App\Models\ClubProfile;
 use App\Models\Game;
 
@@ -10,7 +11,7 @@ use App\Models\Game;
  * Default configuration for leagues without specific config.
  * Scales TV revenue based on position and number of teams.
  */
-class DefaultLeagueConfig implements CompetitionConfig
+class DefaultLeagueConfig implements CompetitionConfig, HasSeasonGoals
 {
     private int $numTeams;
     private int $baseTvRevenue;
@@ -20,7 +21,7 @@ class DefaultLeagueConfig implements CompetitionConfig
      */
     private const REPUTATION_TO_GOAL = [
         ClubProfile::REPUTATION_ELITE => Game::GOAL_TITLE,
-        ClubProfile::REPUTATION_CONTINENTAL => Game::GOAL_CHAMPIONS_LEAGUE,
+        ClubProfile::REPUTATION_CONTINENTAL => Game::GOAL_EUROPA_LEAGUE,
         ClubProfile::REPUTATION_ESTABLISHED => Game::GOAL_TOP_HALF,
         ClubProfile::REPUTATION_MODEST => Game::GOAL_TOP_HALF,
         ClubProfile::REPUTATION_LOCAL => Game::GOAL_SURVIVAL,
@@ -68,13 +69,11 @@ class DefaultLeagueConfig implements CompetitionConfig
     {
         // Calculate target positions dynamically based on league size
         $topQuarter = (int) ceil($this->numTeams * 0.05);      // ~1st place
-        $europeanZone = (int) ceil($this->numTeams * 0.20);    // ~Top 4
         $midTable = (int) ceil($this->numTeams * 0.50);        // ~Top half
         $survivalZone = (int) ceil($this->numTeams * 0.85);    // ~17th of 20
 
         return match ($goal) {
             Game::GOAL_TITLE => max(1, $topQuarter),
-            Game::GOAL_CHAMPIONS_LEAGUE => $europeanZone,
             Game::GOAL_EUROPA_LEAGUE => (int) ceil($this->numTeams * 0.30),
             Game::GOAL_TOP_HALF => $midTable,
             Game::GOAL_SURVIVAL => $survivalZone,
@@ -88,7 +87,7 @@ class DefaultLeagueConfig implements CompetitionConfig
     {
         return [
             Game::GOAL_TITLE => ['targetPosition' => $this->getGoalTargetPosition(Game::GOAL_TITLE), 'label' => 'game.goal_title'],
-            Game::GOAL_CHAMPIONS_LEAGUE => ['targetPosition' => $this->getGoalTargetPosition(Game::GOAL_CHAMPIONS_LEAGUE), 'label' => 'game.goal_champions_league'],
+            Game::GOAL_EUROPA_LEAGUE => ['targetPosition' => $this->getGoalTargetPosition(Game::GOAL_EUROPA_LEAGUE), 'label' => 'game.goal_europa_league'],
             Game::GOAL_TOP_HALF => ['targetPosition' => $this->getGoalTargetPosition(Game::GOAL_TOP_HALF), 'label' => 'game.goal_top_half'],
             Game::GOAL_SURVIVAL => ['targetPosition' => $this->getGoalTargetPosition(Game::GOAL_SURVIVAL), 'label' => 'game.goal_survival'],
         ];
