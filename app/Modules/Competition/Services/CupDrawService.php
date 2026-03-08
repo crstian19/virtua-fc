@@ -9,7 +9,6 @@ use App\Models\CupTie;
 use App\Models\Game;
 use App\Models\GameMatch;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Modules\Competition\Services\LeagueFixtureGenerator;
 
@@ -119,43 +118,21 @@ class CupDrawService
             }
         }
 
-        // Phase 3: Bulk update CupTies with match IDs using CASE expressions
-        $tieIds = array_keys($tieMatchMap);
-        $placeholders = implode(',', array_fill(0, count($tieIds), '?'));
-
-        $firstLegCases = '';
-        $firstLegBindings = [];
-
+        // Phase 3: Bulk update CupTies with match IDs using upsert
+        $upsertRows = [];
         foreach ($tieMatchMap as $tieId => $matchIds) {
-            $firstLegCases .= 'WHEN id = ? THEN ? ';
-            $firstLegBindings[] = $tieId;
-            $firstLegBindings[] = $matchIds['first_leg_match_id'];
-        }
-
-        $firstLegBindings = array_merge($firstLegBindings, $tieIds);
-
-        DB::update(
-            "UPDATE cup_ties SET first_leg_match_id = CASE {$firstLegCases}END WHERE id IN ({$placeholders})",
-            $firstLegBindings
-        );
-
-        if ($roundConfig->twoLegged) {
-            $secondLegCases = '';
-            $secondLegBindings = [];
-
-            foreach ($tieMatchMap as $tieId => $matchIds) {
-                $secondLegCases .= 'WHEN id = ? THEN ? ';
-                $secondLegBindings[] = $tieId;
-                $secondLegBindings[] = $matchIds['second_leg_match_id'];
+            $row = ['id' => $tieId, 'first_leg_match_id' => $matchIds['first_leg_match_id']];
+            if ($roundConfig->twoLegged) {
+                $row['second_leg_match_id'] = $matchIds['second_leg_match_id'];
             }
-
-            $secondLegBindings = array_merge($secondLegBindings, $tieIds);
-
-            DB::update(
-                "UPDATE cup_ties SET second_leg_match_id = CASE {$secondLegCases}END WHERE id IN ({$placeholders})",
-                $secondLegBindings
-            );
+            $upsertRows[] = $row;
         }
+
+        $updateColumns = $roundConfig->twoLegged
+            ? ['first_leg_match_id', 'second_leg_match_id']
+            : ['first_leg_match_id'];
+
+        CupTie::upsert($upsertRows, ['id'], $updateColumns);
 
         // Return loaded ties
         return CupTie::where('game_id', $gameId)
