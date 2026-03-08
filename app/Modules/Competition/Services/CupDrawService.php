@@ -47,7 +47,6 @@ class CupDrawService
         $tieRows = [];
         $firstLegRows = [];
         $secondLegRows = [];
-        $tieMatchMap = []; // tieId => [firstLegId, secondLegId]
 
         for ($i = 0; $i < $pairCount; $i++) {
             $homeTeamId = $shuffledTeams[$i * 2];
@@ -64,6 +63,8 @@ class CupDrawService
                 'round_number' => $roundNumber,
                 'home_team_id' => $homeTeamId,
                 'away_team_id' => $awayTeamId,
+                'first_leg_match_id' => $firstLegId,
+                'second_leg_match_id' => $secondLegId,
                 'completed' => false,
             ];
 
@@ -97,10 +98,6 @@ class CupDrawService
                 ];
             }
 
-            $tieMatchMap[$tieId] = [
-                'first_leg_match_id' => $firstLegId,
-                'second_leg_match_id' => $secondLegId,
-            ];
         }
 
         // Phase 2: Bulk insert all records
@@ -117,22 +114,6 @@ class CupDrawService
                 GameMatch::insert($chunk);
             }
         }
-
-        // Phase 3: Bulk update CupTies with match IDs using upsert
-        $upsertRows = [];
-        foreach ($tieMatchMap as $tieId => $matchIds) {
-            $row = ['id' => $tieId, 'first_leg_match_id' => $matchIds['first_leg_match_id']];
-            if ($roundConfig->twoLegged) {
-                $row['second_leg_match_id'] = $matchIds['second_leg_match_id'];
-            }
-            $upsertRows[] = $row;
-        }
-
-        $updateColumns = $roundConfig->twoLegged
-            ? ['first_leg_match_id', 'second_leg_match_id']
-            : ['first_leg_match_id'];
-
-        CupTie::upsert($upsertRows, ['id'], $updateColumns);
 
         // Return loaded ties
         return CupTie::where('game_id', $gameId)
