@@ -703,7 +703,7 @@
                             <div class="flex items-center gap-1.5 text-white/40">
                                 <img :src="m.homeTeamImage" class="w-4 h-4">
                                 <span class="truncate max-w-24" x-text="m.homeTeam"></span>
-                                <span class="font-semibold tabular-nums"
+                                <span class="font-semibold tabular-nums whitespace-nowrap"
                                       x-text="otherMatchScores[idx]?.homeScore + ' - ' + otherMatchScores[idx]?.awayScore"></span>
                                 <span class="truncate max-w-24" x-text="m.awayTeam"></span>
                                 <img :src="m.awayTeamImage" class="w-4 h-4">
