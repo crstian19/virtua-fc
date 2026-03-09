@@ -20,6 +20,7 @@ class CleanupUnplayedGames extends Command
         $dryRun = $this->option('dry-run');
 
         $staleGames = Game::where('current_matchday', 0)
+            ->where('season', '2025')
             ->where('created_at', '<', now()->subDays($days))
             ->get();
 
