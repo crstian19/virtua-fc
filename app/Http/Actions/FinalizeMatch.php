@@ -2,6 +2,7 @@
 
 namespace App\Http\Actions;
 
+use App\Events\SeasonCompleted;
 use App\Modules\Match\Services\MatchdayOrchestrator;
 use App\Modules\Match\Services\MatchFinalizationService;
 use App\Models\Game;
@@ -34,6 +35,18 @@ class FinalizeMatch
         }
 
         $this->finalizationService->finalize($match, $game);
+
+        // Fire SeasonCompleted if no unplayed matches remain after finalization.
+        // This covers the case where the player's match is the last match of the
+        // season (e.g. promotion playoff final) — ShowGame would redirect straight
+        // to season-end, bypassing AdvanceMatchday which normally fires this event.
+        $hasRemainingMatches = GameMatch::where('game_id', $game->id)
+            ->where('played', false)
+            ->exists();
+
+        if (! $hasRemainingMatches) {
+            event(new SeasonCompleted($game));
+        }
 
         // Tournament auto-simulation: advance all remaining matches and go to summary
         if ($request->has('tournament_end') && $game->isTournamentMode()) {
