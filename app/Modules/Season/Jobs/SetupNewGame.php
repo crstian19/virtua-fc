@@ -9,6 +9,7 @@ use App\Modules\Season\Services\SeasonSetupPipeline;
 use App\Modules\Transfer\Services\ContractService;
 use App\Modules\Player\Services\InjuryService;
 use App\Modules\Player\Services\PlayerDevelopmentService;
+use App\Modules\Player\Services\PlayerTierService;
 use App\Modules\Season\Processors\LeagueFixtureProcessor;
 use App\Modules\Season\Processors\StandingsResetProcessor;
 use App\Support\Money;
@@ -107,6 +108,11 @@ class SetupNewGame implements ShouldQueue
 
                 $fixtureProcessor->process($game, $data);
                 $standingsProcessor->process($game, $data);
+            }
+
+            // Compute tiers for players when templates weren't used (fallback + Swiss)
+            if (!$this->usedTemplates) {
+                app(PlayerTierService::class)->recomputeAllTiersForGame($this->gameId);
             }
 
             // Mark setup as complete
@@ -376,6 +382,7 @@ class SetupNewGame implements ShouldQueue
                 'potential' => $t->potential,
                 'potential_low' => $t->potential_low,
                 'potential_high' => $t->potential_high,
+                'tier' => $t->tier,
                 'season_appearances' => 0,
             ];
         }
