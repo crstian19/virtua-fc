@@ -45,7 +45,6 @@
                         this.province = '';
                         if (!this.country) {
                             this.provinces = [];
-                            return;
                         }
                         this.apply();
                     }

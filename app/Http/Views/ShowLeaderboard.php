@@ -3,8 +3,8 @@
 namespace App\Http\Views;
 
 use App\Models\ManagerStats;
-use App\Support\ProfileCountries;
 use Illuminate\Http\Request;
+use Locale;
 
 class ShowLeaderboard
 {
@@ -57,7 +57,21 @@ class ShowLeaderboard
                 ->toArray();
         }
 
-        $countries = ProfileCountries::all();
+        $locale = app()->getLocale();
+        $countryCodes = ManagerStats::query()
+            ->join('users', 'users.id', '=', 'manager_stats.user_id')
+            ->where('users.is_profile_public', true)
+            ->where('manager_stats.matches_played', '>=', self::MIN_MATCHES)
+            ->whereNotNull('users.country')
+            ->where('users.country', '!=', '')
+            ->distinct()
+            ->pluck('users.country');
+
+        $countries = $countryCodes->mapWithKeys(function ($code) use ($locale) {
+            $localized = Locale::getDisplayRegion('und_'.$code, $locale);
+
+            return [$code => ($localized !== $code) ? $localized : $code];
+        })->sort()->toArray();
 
         // Summary stats
         $totalManagers = ManagerStats::where('matches_played', '>=', self::MIN_MATCHES)
