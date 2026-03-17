@@ -417,6 +417,10 @@ class LoanService
      */
     public function requestLoanIn(Game $game, GamePlayer $player): TransferOffer
     {
+        if ($player->team_id === null) {
+            throw new \InvalidArgumentException('Cannot loan a free agent — no parent team.');
+        }
+
         return TransferOffer::create([
             'game_id' => $game->id,
             'game_player_id' => $player->id,

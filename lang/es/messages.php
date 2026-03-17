@@ -107,6 +107,7 @@ return [
     // Squad cap
     'squad_full' => 'Tu plantilla ya tiene el máximo de :max jugadores. Libera o vende un jugador primero.',
     'squad_trim_required' => 'Tu plantilla tiene :count jugadores. Debes liberar al menos :excess para cumplir el límite de :max jugadores.',
+    'cannot_loan_free_agent' => 'No se puede ceder a un jugador libre. Fíchalo directamente.',
 
     // Pending actions
     'action_required' => 'Hay acciones pendientes que debes resolver antes de continuar.',

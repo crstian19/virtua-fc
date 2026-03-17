@@ -1289,6 +1289,12 @@ class TransferService
 
         $player = $offer->gamePlayer;
         $parentTeamId = $offer->selling_team_id ?? $player->team_id;
+
+        if ($parentTeamId === null) {
+            $offer->update(['status' => TransferOffer::STATUS_REJECTED, 'resolved_at' => $game->current_date]);
+            return;
+        }
+
         $returnDate = $game->getSeasonEndDate();
 
         Loan::create([

@@ -31,6 +31,12 @@ class RequestLoan
 
     private function handleLoanIn(Game $game, GamePlayer $player)
     {
+        // Can't loan a free agent — no parent team to return to
+        if ($player->team_id === null) {
+            return redirect()->back()
+                ->with('error', __('messages.cannot_loan_free_agent'));
+        }
+
         // Squad size cap
         if (ContractService::isSquadFull($game)) {
             return redirect()->back()
