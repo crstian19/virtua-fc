@@ -30,9 +30,9 @@
             {{-- Filters --}}
             <x-section-card>
                 <div class="p-4" x-data="{
-                    country: '{{ $selectedCountry ?? '' }}',
-                    province: '{{ $selectedProvince ?? '' }}',
-                    sort: '{{ $currentSort }}',
+                    country: @js($selectedCountry ?? ''),
+                    province: @js($selectedProvince ?? ''),
+                    sort: @js($currentSort),
                     provinces: @js($provinces),
                     apply() {
                         const params = new URLSearchParams();
@@ -98,15 +98,35 @@
                         <p class="text-xs text-text-faint mt-1">{{ __('leaderboard.min_matches', ['count' => $minMatches]) }}</p>
                     </div>
                 @else
+                    @php
+                        $sortUrl = function (string $column) use ($selectedCountry, $selectedProvince) {
+                            $params = array_filter([
+                                'country' => $selectedCountry,
+                                'province' => $selectedProvince,
+                                'sort' => $column === 'win_percentage' ? null : $column,
+                            ]);
+                            return route('leaderboard', $params);
+                        };
+                        $sortIcon = '<svg class="size-3 inline-block ml-0.5 -mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>';
+                    @endphp
+
                     {{-- Desktop Header --}}
                     <div class="hidden md:grid grid-cols-[3rem_1fr_4rem_5rem_8rem_4rem_4rem] gap-2 px-4 py-2.5 border-b border-border-default">
                         <div class="text-[10px] text-text-muted uppercase tracking-wider text-center">{{ __('leaderboard.rank') }}</div>
                         <div class="text-[10px] text-text-muted uppercase tracking-wider">{{ __('leaderboard.manager') }}</div>
-                        <div class="text-[10px] text-text-muted uppercase tracking-wider text-center">{{ __('leaderboard.matches_played') }}</div>
-                        <div class="text-[10px] text-text-muted uppercase tracking-wider text-center">{{ __('leaderboard.win_percentage') }}</div>
+                        <a href="{{ $sortUrl('matches_played') }}" class="text-[10px] uppercase tracking-wider text-center {{ $currentSort === 'matches_played' ? 'text-accent-blue font-semibold' : 'text-text-muted hover:text-text-secondary' }} transition">
+                            {{ __('leaderboard.matches_played') }}{!! $currentSort === 'matches_played' ? $sortIcon : '' !!}
+                        </a>
+                        <a href="{{ $sortUrl('win_percentage') }}" class="text-[10px] uppercase tracking-wider text-center {{ $currentSort === 'win_percentage' ? 'text-accent-blue font-semibold' : 'text-text-muted hover:text-text-secondary' }} transition">
+                            {{ __('leaderboard.win_percentage') }}{!! $currentSort === 'win_percentage' ? $sortIcon : '' !!}
+                        </a>
                         <div class="text-[10px] text-text-muted uppercase tracking-wider text-center">{{ __('leaderboard.record') }}</div>
-                        <div class="text-[10px] text-text-muted uppercase tracking-wider text-center">{{ __('leaderboard.unbeaten_streak') }}</div>
-                        <div class="text-[10px] text-text-muted uppercase tracking-wider text-center">{{ __('leaderboard.seasons') }}</div>
+                        <a href="{{ $sortUrl('longest_unbeaten_streak') }}" class="text-[10px] uppercase tracking-wider text-center {{ $currentSort === 'longest_unbeaten_streak' ? 'text-accent-blue font-semibold' : 'text-text-muted hover:text-text-secondary' }} transition">
+                            {{ __('leaderboard.unbeaten_streak') }}{!! $currentSort === 'longest_unbeaten_streak' ? $sortIcon : '' !!}
+                        </a>
+                        <a href="{{ $sortUrl('seasons_completed') }}" class="text-[10px] uppercase tracking-wider text-center {{ $currentSort === 'seasons_completed' ? 'text-accent-blue font-semibold' : 'text-text-muted hover:text-text-secondary' }} transition">
+                            {{ __('leaderboard.seasons') }}{!! $currentSort === 'seasons_completed' ? $sortIcon : '' !!}
+                        </a>
                     </div>
 
                     <div class="divide-y divide-border-default">
