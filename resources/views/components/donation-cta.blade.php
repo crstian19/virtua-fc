@@ -1,5 +1,5 @@
 <div class="max-w-xl mx-auto text-center">
-    <div class="bg-pink-700 rounded-xl px-6 py-6 md:px-8 md:py-8">
+    <div class="bg-red-500 rounded-xl px-6 py-6 md:px-8 md:py-8">
         {{-- Heart icon --}}
         <div class="inline-flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/15 mb-4">
             <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
