@@ -16,16 +16,18 @@ class BackfillManagerStats extends Command
 
     public function handle(): int
     {
-        $games = Game::where('game_mode', Game::MODE_CAREER)->get();
+        $total = Game::where('game_mode', Game::MODE_CAREER)->count();
 
-        $this->info("Processing {$games->count()} career games...");
+        $this->info("Processing {$total} career games...");
 
-        $bar = $this->output->createProgressBar($games->count());
+        $bar = $this->output->createProgressBar($total);
 
-        foreach ($games as $game) {
-            $this->backfillGame($game);
-            $bar->advance();
-        }
+        Game::where('game_mode', Game::MODE_CAREER)->chunk(10, function ($games) use ($bar) {
+            foreach ($games as $game) {
+                $this->backfillGame($game);
+                $bar->advance();
+            }
+        });
 
         $bar->finish();
         $this->newLine();
@@ -42,8 +44,34 @@ class BackfillManagerStats extends Command
         $currentStreak = 0;
         $longestStreak = 0;
 
-        $seasonsCompleted = SeasonArchive::where('game_id', $game->id)->count();
+        // Phase 1: Process archived seasons (oldest first)
+        // Only select match_results to avoid loading large JSON blobs
+        // (player_season_stats, final_standings, match_events_archive)
+        $seasonsCompleted = 0;
 
+        SeasonArchive::where('game_id', $game->id)
+            ->select('id', 'game_id', 'season', 'match_results')
+            ->orderBy('season')
+            ->each(function (SeasonArchive $archive) use ($game, &$won, &$drawn, &$lost, &$currentStreak, &$longestStreak, &$seasonsCompleted) {
+                $seasonsCompleted++;
+
+                $archivedMatches = collect($archive->match_results ?? [])
+                    ->filter(fn (array $m) => $m['home_team_id'] === $game->team_id || $m['away_team_id'] === $game->team_id)
+                    ->sortBy(['date', 'round_number'])
+                    ->values();
+
+                foreach ($archivedMatches as $matchData) {
+                    $result = $this->determineResultFromArchive($matchData, $game->team_id);
+
+                    if ($result === null) {
+                        continue;
+                    }
+
+                    $this->applyResult($result, $won, $drawn, $lost, $currentStreak, $longestStreak);
+                }
+            });
+
+        // Phase 2: Process current season matches (not yet archived)
         $matches = GameMatch::where('game_id', $game->id)
             ->where('played', true)
             ->where(function ($query) use ($game) {
@@ -61,20 +89,7 @@ class BackfillManagerStats extends Command
                 continue;
             }
 
-            match ($result) {
-                'win' => $won++,
-                'draw' => $drawn++,
-                'loss' => $lost++,
-            };
-
-            if ($result === 'loss') {
-                $currentStreak = 0;
-            } else {
-                $currentStreak++;
-                if ($currentStreak > $longestStreak) {
-                    $longestStreak = $currentStreak;
-                }
-            }
+            $this->applyResult($result, $won, $drawn, $lost, $currentStreak, $longestStreak);
         }
 
         $total = $won + $drawn + $lost;
@@ -98,6 +113,73 @@ class BackfillManagerStats extends Command
                 'seasons_completed' => $seasonsCompleted,
             ],
         );
+    }
+
+    private function applyResult(string $result, int &$won, int &$drawn, int &$lost, int &$currentStreak, int &$longestStreak): void
+    {
+        match ($result) {
+            'win' => $won++,
+            'draw' => $drawn++,
+            'loss' => $lost++,
+        };
+
+        if ($result === 'loss') {
+            $currentStreak = 0;
+        } else {
+            $currentStreak++;
+            if ($currentStreak > $longestStreak) {
+                $longestStreak = $currentStreak;
+            }
+        }
+    }
+
+    /**
+     * @return 'win'|'draw'|'loss'|null
+     */
+    private function determineResultFromArchive(array $match, string $teamId): ?string
+    {
+        $isHome = $match['home_team_id'] === $teamId;
+
+        // Penalties (enriched archives)
+        if (isset($match['home_score_penalties'], $match['away_score_penalties'])
+            && $match['home_score_penalties'] !== null
+            && $match['away_score_penalties'] !== null) {
+            $teamPen = $isHome ? $match['home_score_penalties'] : $match['away_score_penalties'];
+            $oppPen = $isHome ? $match['away_score_penalties'] : $match['home_score_penalties'];
+
+            return $teamPen > $oppPen ? 'win' : 'loss';
+        }
+
+        // Extra time (enriched archives)
+        if (! empty($match['is_extra_time'])
+            && isset($match['home_score_et'], $match['away_score_et'])
+            && $match['home_score_et'] !== null
+            && $match['away_score_et'] !== null) {
+            $teamScore = $isHome ? $match['home_score_et'] : $match['away_score_et'];
+            $oppScore = $isHome ? $match['away_score_et'] : $match['home_score_et'];
+
+            if ($teamScore > $oppScore) {
+                return 'win';
+            }
+            if ($oppScore > $teamScore) {
+                return 'loss';
+            }
+
+            return 'draw';
+        }
+
+        // Regular time (always present)
+        $teamScore = $isHome ? $match['home_score'] : $match['away_score'];
+        $oppScore = $isHome ? $match['away_score'] : $match['home_score'];
+
+        if ($teamScore > $oppScore) {
+            return 'win';
+        }
+        if ($oppScore > $teamScore) {
+            return 'loss';
+        }
+
+        return 'draw';
     }
 
     /**
