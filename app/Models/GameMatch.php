@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property string $id
@@ -32,8 +34,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $away_formation
  * @property string|null $home_mentality
  * @property string|null $away_mentality
+ * @property string|null $mvp_player_id
  * @property array<array-key, mixed>|null $substitutions
  * @property-read \App\Models\Team $awayTeam
+ * @property-read \App\Models\GamePlayer|null $mvpPlayer
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\MatchEvent> $cardEvents
  * @property-read int|null $card_events_count
  * @property-read \App\Models\Competition $competition
@@ -111,6 +115,7 @@ class GameMatch extends Model
         'away_score_penalties',
         'home_possession',
         'away_possession',
+        'mvp_player_id',
         'substitutions',
     ];
 
@@ -167,6 +172,11 @@ class GameMatch extends Model
         return $this->belongsTo(CupTie::class);
     }
 
+    public function mvpPlayer(): BelongsTo
+    {
+        return $this->belongsTo(GamePlayer::class, 'mvp_player_id');
+    }
+
     public function isCupMatch(): bool
     {
         return $this->cup_tie_id !== null;
@@ -220,6 +230,33 @@ class GameMatch extends Model
             return '-';
         }
         return "{$this->home_score} - {$this->away_score}";
+    }
+
+    /**
+     * Count MVP awards per player for a given game, optionally filtered by competition and/or teams.
+     *
+     * @return Collection<string, int>  Keyed by mvp_player_id => count
+     */
+    public static function mvpCountsByPlayer(string $gameId, ?string $competitionId = null, ?array $teamIds = null): Collection
+    {
+        $query = DB::table('game_matches')
+            ->where('game_id', $gameId)
+            ->where('played', true)
+            ->whereNotNull('mvp_player_id');
+
+        if ($competitionId) {
+            $query->where('competition_id', $competitionId);
+        }
+
+        if ($teamIds) {
+            $query->where(fn ($q) => $q
+                ->whereIn('home_team_id', $teamIds)
+                ->orWhereIn('away_team_id', $teamIds));
+        }
+
+        return $query
+            ->groupBy('mvp_player_id')
+            ->pluck(DB::raw('COUNT(*)'), 'mvp_player_id');
     }
 
     public function getWinnerId(): ?string
