@@ -80,6 +80,7 @@ class RegisteredUserController extends Controller
 
             if ($invite) {
                 $invite->consume();
+                $user->forceFill(['email_verified_at' => now()])->save();
             }
 
             event(new Registered($user));

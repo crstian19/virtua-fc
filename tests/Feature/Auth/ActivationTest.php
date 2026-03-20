@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\InviteCode;
 use App\Models\User;
 use App\Notifications\ActivateAccount;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -152,6 +153,28 @@ class ActivationTest extends TestCase
 
         $response->assertSessionHasErrors('email');
         $this->assertGuest();
+    }
+
+    public function test_invite_code_registration_sets_email_verified_at(): void
+    {
+        Notification::fake();
+        config()->set('beta.enabled', true);
+
+        InviteCode::create([
+            'code' => 'TESTCODE',
+            'email' => 'invited@example.com',
+            'max_uses' => 1,
+            'times_used' => 0,
+        ]);
+
+        $this->post('/register', [
+            'name' => 'Invited User',
+            'email' => 'invited@example.com',
+            'invite_code' => 'TESTCODE',
+        ]);
+
+        $user = User::where('email', 'invited@example.com')->first();
+        $this->assertNotNull($user->email_verified_at);
     }
 
     // --- Re-registration with same unactivated email ---
