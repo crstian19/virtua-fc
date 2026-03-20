@@ -27,8 +27,9 @@
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <!-- Activation hint -->
-        <p class="mt-4 text-sm text-text-secondary">{{ __('auth.activation_register_hint') }}</p>
+        <p class="mt-4 text-sm text-text-tertiary">
+            {{ __('auth.activation_register_hint') }}
+        </p>
 
         @if($errors->has('invite_code'))
             <x-input-error :messages="$errors->get('invite_code')" class="mt-4" />
@@ -40,7 +41,7 @@
             </a>
 
             <x-primary-button class="ms-4">
-                {{ __('auth.Register') }}
+                {{ __('auth.Create Account') }}
             </x-primary-button>
         </div>
     </form>
