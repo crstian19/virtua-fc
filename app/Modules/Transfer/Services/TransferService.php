@@ -1559,7 +1559,7 @@ class TransferService
 
         // Contract length (longer = more reluctant)
         if ($player->contract_until) {
-            $yearsLeft = $player->contract_until->diffInYears($player->game->current_date);
+            $yearsLeft = $player->game->current_date->diffInYears($player->contract_until);
             if ($yearsLeft >= 4) {
                 $disposition -= 0.10;
             } elseif ($yearsLeft <= 1) {

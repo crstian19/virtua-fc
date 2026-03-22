@@ -497,7 +497,7 @@ class ScoutingService
         }
 
         $game = $player->game;
-        $yearsLeft = $player->contract_until->diffInYears($game->current_date);
+        $yearsLeft = $game->current_date->diffInYears($player->contract_until);
 
         if ($yearsLeft >= 4) {
             return 1.2;
@@ -1004,7 +1004,7 @@ class ScoutingService
 
         // Contract length factor: fewer years left = more willing
         if ($player->contract_until) {
-            $yearsLeft = max(0, $player->contract_until->diffInYears($game->current_date));
+            $yearsLeft = max(0, $game->current_date->diffInYears($player->contract_until));
             if ($yearsLeft <= 1) {
                 $score += 30;
             } elseif ($yearsLeft <= 2) {
