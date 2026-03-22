@@ -91,7 +91,12 @@ export default function negotiationChat() {
                 this.maxRounds = data.max_rounds || 3;
                 this.appendMessages(data.messages);
 
-                this.prefillFromOptions();
+                // Fee already agreed from a previous session — go straight to personal terms
+                if (data.negotiation_status === 'fee_agreed') {
+                    await this.transitionToPersonalTerms();
+                } else {
+                    this.prefillFromOptions();
+                }
             }
             this.loading = false;
         },

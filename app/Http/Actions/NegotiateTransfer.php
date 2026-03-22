@@ -90,11 +90,39 @@ class NegotiateTransfer
             ]);
         }
 
+        // Fee already agreed — tell frontend to transition to personal terms
+        $feeAgreed = TransferOffer::where('game_id', $game->id)
+            ->where('game_player_id', $player->id)
+            ->where('offering_team_id', $game->team_id)
+            ->where('status', TransferOffer::STATUS_FEE_AGREED)
+            ->first();
+
+        if ($feeAgreed) {
+            $teamName = $player->team?->name ?? 'Unknown';
+
+            return response()->json([
+                'status' => 'ok',
+                'negotiation_status' => 'fee_agreed',
+                'round' => $feeAgreed->negotiation_round,
+                'max_rounds' => self::MAX_ROUNDS,
+                'messages' => [
+                    $this->agentMessage('accepted', [
+                        'text' => __('transfers.chat_club_accepted', [
+                            'team' => $teamName,
+                            'fee' => Money::format($feeAgreed->transfer_fee),
+                            'player' => $player->name,
+                        ]),
+                        'fee' => (int) ($feeAgreed->transfer_fee / 100),
+                    ]),
+                ],
+            ]);
+        }
+
         // Prevent duplicate pending offers
         $hasPending = TransferOffer::where('game_id', $game->id)
             ->where('game_player_id', $player->id)
             ->where('offering_team_id', $game->team_id)
-            ->whereIn('status', [TransferOffer::STATUS_PENDING, TransferOffer::STATUS_FEE_AGREED])
+            ->where('status', TransferOffer::STATUS_PENDING)
             ->exists();
 
         if ($hasPending) {
