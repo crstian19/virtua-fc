@@ -2,6 +2,8 @@
 
 namespace App\Modules\Player;
 
+use Carbon\Carbon;
+
 /**
  * Single source of truth for player age category boundaries.
  *
@@ -23,6 +25,16 @@ final class PlayerAge
     public const MIN_RETIREMENT_GK = 35;
     public const MAX_CAREER_OUTFIELD = 40;
     public const MAX_CAREER_GK = 42;
+
+    /**
+     * Convert an age threshold to a date-of-birth cutoff for database queries.
+     *
+     * Players born on or before the returned date are at least $age years old.
+     */
+    public static function dateOfBirthCutoff(int $age, Carbon $referenceDate): Carbon
+    {
+        return $referenceDate->copy()->subYears($age);
+    }
 
     /**
      * Is the player in the growing phase?

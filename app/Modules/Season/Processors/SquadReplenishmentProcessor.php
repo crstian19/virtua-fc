@@ -9,6 +9,7 @@ use App\Modules\Squad\DTOs\GeneratedPlayerData;
 use App\Modules\Squad\Services\PlayerGeneratorService;
 use App\Models\Game;
 use App\Models\GamePlayer;
+use App\Modules\Player\PlayerAge;
 use Carbon\Carbon;
 
 /**
@@ -477,7 +478,7 @@ class SquadReplenishmentProcessor implements SeasonProcessor
         return GamePlayer::where('game_id', $game->id)
             ->where('team_id', $teamId)
             ->whereHas('player', function ($q) use ($game) {
-                $q->where('date_of_birth', '<=', $game->current_date->copy()->subYears(30));
+                $q->where('date_of_birth', '<=', PlayerAge::dateOfBirthCutoff(PlayerAge::MIN_RETIREMENT_OUTFIELD, $game->current_date));
             })
             ->orderByRaw('(COALESCE(game_technical_ability, 0) + COALESCE(game_physical_ability, 0)) ASC')
             ->limit($count)
