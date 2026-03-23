@@ -388,6 +388,7 @@ export default function liveMatch(config) {
                 const injured = this.availableLineupForPicker.find(p => p.id === event.gamePlayerId);
                 if (injured) {
                     this.selectedPlayerOut = injured;
+                    this.livePitchSelectedOutId = injured.id;
                 }
             }
         },
