@@ -13,11 +13,11 @@ class DeleteUserJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
-    public $queue = 'setup';
-
     public function __construct(
         public int $userId,
-    ) {}
+    ) {
+        $this->onQueue('setup');
+    }
 
     public function handle(): void
     {

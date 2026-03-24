@@ -13,11 +13,11 @@ class DeleteGameJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
-    public $queue = 'setup';
-
     public function __construct(
         public string $gameId,
-    ) {}
+    ) {
+        $this->onQueue('setup');
+    }
 
     public function handle(): void
     {
