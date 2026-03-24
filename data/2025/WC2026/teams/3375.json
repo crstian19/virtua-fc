@@ -106,6 +106,15 @@
       "position": "Centre-Back"
     },
     {
+      "dateOfBirth": "Jan 9, 2001",
+      "foot": "right",
+      "height": "1,82m",
+      "id": "466794",
+      "marketValue": "€35.00m",
+      "name": "Eric García",
+      "position": "Centre-Back"
+    },
+    {
       "contract": "Jun 15, 2023",
       "dateOfBirth": "Nov 11, 1996",
       "foot": "right",
@@ -198,6 +207,15 @@
       "name": "Martín Zubimendi",
       "number": "18",
       "position": "Defensive Midfield"
+    },
+    {
+      "dateOfBirth": "Oct 29, 2001",
+      "foot": "left",
+      "height": "1,74m",
+      "id": "709372",
+      "marketValue": "€25.00m",
+      "name": "Carlos Romero",
+      "position": "Left-Back"
     },
     {
       "contract": "Mar 23, 2018",
@@ -321,6 +339,16 @@
       "id": "85288",
       "marketValue": "€6.00m",
       "name": "Isco",
+      "position": "Attacking Midfield"
+    },
+    {
+      "contract": "May 30, 2028",
+      "dateOfBirth": "Jan 21, 1996",
+      "foot": "left",
+      "height": "1,82m",
+      "id": "296622",
+      "marketValue": "€15.00m",
+      "name": "Marco Asensio",
       "position": "Attacking Midfield"
     },
     {
