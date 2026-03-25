@@ -418,8 +418,8 @@ class ScoutingService
         $base = $player->market_value_cents;
         $importance = $this->calculatePlayerImportance($player);
 
-        // Importance multiplier: 1.0x for worst, 2.0x for best
-        $importanceMultiplier = 1.0 + ($importance * 1.0);
+        // Importance multiplier: 1.0x for worst, 1.5x for best
+        $importanceMultiplier = 1.0 + ($importance * 0.5);
 
         // Contract modifier
         $contractModifier = $this->getContractModifier($player);
@@ -427,7 +427,8 @@ class ScoutingService
         // Age modifier
         $ageModifier = $this->getAgeModifier($player->age($player->game->current_date));
 
-        $askingPrice = $base * $importanceMultiplier * $contractModifier * $ageModifier;
+        $totalMultiplier = min($importanceMultiplier * $contractModifier * $ageModifier, 1.5);
+        $askingPrice = $base * $totalMultiplier;
 
         // Round to nearest €100K (in cents)
         return (int) (round($askingPrice / 10_000_000) * 10_000_000);
