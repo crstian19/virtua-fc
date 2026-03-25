@@ -45,6 +45,22 @@ class PlayerGeneratorService
     ) {}
 
     /**
+     * Seed name and number caches for a specific team from already-loaded data.
+     *
+     * Allows callers that already have the data (e.g. from a bulk query) to
+     * populate caches without triggering any additional database queries.
+     *
+     * @param  string[]  $playerNames
+     * @param  int[]  $takenNumbers
+     */
+    public function seedCaches(string $gameId, string $teamId, array $playerNames, array $takenNumbers): void
+    {
+        $key = "{$gameId}:{$teamId}";
+        $this->teamNamesCache[$key] = $playerNames;
+        $this->takenNumbersCache[$key] = $takenNumbers;
+    }
+
+    /**
      * Create a computer-generated player from the given configuration.
      *
      * Handles:
@@ -395,10 +411,10 @@ class PlayerGeneratorService
                 ->all();
         }
 
-        $taken = $this->takenNumbersCache[$key];
+        $takenSet = array_flip($this->takenNumbersCache[$key]);
 
         for ($n = 2; $n <= 99; $n++) {
-            if (!in_array($n, $taken)) {
+            if (!isset($takenSet[$n])) {
                 return $n;
             }
         }

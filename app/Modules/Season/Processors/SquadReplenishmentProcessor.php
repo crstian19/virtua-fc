@@ -12,6 +12,7 @@ use App\Models\GamePlayer;
 use App\Modules\Player\PlayerAge;
 use App\Support\PositionMapper;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Centralised AI roster maintenance: ensures every AI team has a viable squad.
@@ -118,17 +119,26 @@ class SquadReplenishmentProcessor implements SeasonProcessor
         $bulkMeta = [];
         $releaseIds = [];
 
-        // Get AI team IDs, then process one team at a time to bound memory
-        $aiTeamIds = GamePlayer::where('game_id', $game->id)
-            ->whereNotNull('team_id')
-            ->where('team_id', '!=', $game->team_id)
-            ->distinct()
-            ->pluck('team_id');
+        $playersByTeam = GamePlayer::where('game_players.game_id', $game->id)
+            ->whereNotNull('game_players.team_id')
+            ->join('players', 'game_players.player_id', '=', 'players.id')
+            ->select([
+                'game_players.id',
+                'game_players.team_id',
+                'game_players.position',
+                'game_players.game_technical_ability',
+                'game_players.game_physical_ability',
+                'game_players.number',
+                'players.date_of_birth',
+                'players.name as player_name',
+            ])
+            ->get()
+            ->groupBy('team_id');
+
+        $aiTeamIds = $playersByTeam->keys()->reject(fn ($id) => $id === $game->team_id);
 
         foreach ($aiTeamIds as $teamId) {
-            $players = GamePlayer::where('game_id', $game->id)
-                ->where('team_id', $teamId)
-                ->get();
+            $players = $playersByTeam->get($teamId, collect());
             $teamAvgAbility = $this->calculateTeamAverageAbility($players);
             $positionCounts = $players->groupBy('position')->map->count();
 
@@ -151,7 +161,7 @@ class SquadReplenishmentProcessor implements SeasonProcessor
             $slotsAvailable = self::YOUTH_INTAKE_SQUAD_CAP - $currentSquadSize;
             if ($slotsAvailable < $youthCount) {
                 $toRelease = $youthCount - max(0, $slotsAvailable);
-                $candidates = $this->getOldestWeakestIds($game, $teamId, $toRelease);
+                $candidates = $this->getOldestWeakestIds($players, $game->current_date, $toRelease);
                 $releaseIds = array_merge($releaseIds, $candidates);
             }
 
@@ -166,9 +176,7 @@ class SquadReplenishmentProcessor implements SeasonProcessor
         }
 
         // Emergency replenishment for user's team (safety net for expired contracts/retirements)
-        $userPlayers = GamePlayer::where('game_id', $game->id)
-            ->where('team_id', $game->team_id)
-            ->get();
+        $userPlayers = $playersByTeam->get($game->team_id, collect());
 
         $emergencyNames = [];
         if ($userPlayers->count() < self::MIN_SQUAD_SIZE) {
@@ -189,6 +197,17 @@ class SquadReplenishmentProcessor implements SeasonProcessor
         if (!empty($releaseIds)) {
             GamePlayer::whereIn('id', $releaseIds)->update(['team_id' => null]);
         }
+
+        // Avoids per-team cache-miss queries during createBulk()
+        foreach ($playersByTeam as $teamId => $players) {
+            $this->playerGenerator->seedCaches(
+                $game->id,
+                $teamId,
+                $players->pluck('player_name')->toArray(),
+                $players->pluck('number')->filter()->toArray(),
+            );
+        }
+        unset($playersByTeam);
 
         // Bulk insert all generated players
         $results = $this->playerGenerator->createBulk($game, $bulkData);
@@ -454,15 +473,14 @@ class SquadReplenishmentProcessor implements SeasonProcessor
      *
      * @return string[]
      */
-    private function getOldestWeakestIds(Game $game, string $teamId, int $count): array
+    private function getOldestWeakestIds(Collection $players, Carbon $currentDate, int $count): array
     {
-        return GamePlayer::where('game_id', $game->id)
-            ->where('team_id', $teamId)
-            ->whereHas('player', function ($q) use ($game) {
-                $q->where('date_of_birth', '<=', PlayerAge::dateOfBirthCutoff(PlayerAge::MIN_RETIREMENT_OUTFIELD, $game->current_date));
-            })
-            ->orderByRaw('(COALESCE(game_technical_ability, 0) + COALESCE(game_physical_ability, 0)) ASC')
-            ->limit($count)
+        $cutoff = PlayerAge::dateOfBirthCutoff(PlayerAge::MIN_RETIREMENT_OUTFIELD, $currentDate);
+
+        return $players
+            ->filter(fn ($gp) => $gp->date_of_birth && Carbon::parse($gp->date_of_birth)->lte($cutoff))
+            ->sortBy(fn ($gp) => ($gp->game_technical_ability ?? 0) + ($gp->game_physical_ability ?? 0))
+            ->take($count)
             ->pluck('id')
             ->toArray();
     }
