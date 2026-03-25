@@ -47,6 +47,7 @@ class SeedWorldCupData extends Command
         $this->seedCompetition();
         $teamMapping = $this->seedTeams();
         $playerCount = $this->seedPlayers();
+        $this->generatePlayerTemplates();
 
         $this->generateGroupsJson($teamMapping);
         $this->generateScheduleJson();
@@ -346,6 +347,16 @@ class SeedWorldCupData extends Command
         $this->line("  Players seeded: {$playerCount}");
 
         return $playerCount;
+    }
+
+    /**
+     * Pre-compute game_player_templates for WC national team rosters.
+     */
+    private function generatePlayerTemplates(): void
+    {
+        $service = app(\App\Modules\Season\Services\GamePlayerTemplateService::class);
+        $count = $service->generateForWorldCup(self::SEASON);
+        $this->info("Generated {$count} player templates for World Cup rosters");
     }
 
     /**

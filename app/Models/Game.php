@@ -172,6 +172,27 @@ class Game extends Model
         return $this->setup_completed_at !== null;
     }
 
+    /**
+     * Re-dispatch the appropriate setup job for this game's mode.
+     */
+    public function redispatchSetupJob(): void
+    {
+        if ($this->isTournamentMode()) {
+            \App\Modules\Season\Jobs\SetupTournamentGame::dispatch(
+                gameId: $this->id,
+                teamId: $this->team_id,
+            );
+        } else {
+            \App\Modules\Season\Jobs\SetupNewGame::dispatch(
+                gameId: $this->id,
+                teamId: $this->team_id,
+                competitionId: $this->competition_id,
+                season: $this->season,
+                gameMode: $this->game_mode ?? self::MODE_CAREER,
+            );
+        }
+    }
+
     public function isTransitioningSeason(): bool
     {
         return $this->season_transitioning_at !== null;

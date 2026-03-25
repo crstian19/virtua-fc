@@ -3,25 +3,19 @@
 namespace App\Modules\Season\Jobs;
 
 use App\Modules\Notification\Services\NotificationService;
-use App\Modules\Player\Services\InjuryService;
-use App\Modules\Player\Services\PlayerDevelopmentService;
-use App\Modules\Player\Services\PlayerTierService;
-use App\Modules\Competition\Services\StandingsCalculator;
 use App\Models\CompetitionEntry;
 use App\Models\CompetitionTeam;
 use App\Models\Game;
 use App\Models\GameMatch;
-use Carbon\Carbon;
 use App\Models\GamePlayer;
 use App\Models\GameStanding;
-use App\Models\Player;
 use App\Models\Team;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class SetupTournamentGame implements ShouldQueue
@@ -40,8 +34,6 @@ class SetupTournamentGame implements ShouldQueue
     }
 
     public function handle(
-        StandingsCalculator $standingsCalculator,
-        PlayerDevelopmentService $developmentService,
         NotificationService $notificationService,
     ): void {
         $game = Game::find($this->gameId);
@@ -54,36 +46,34 @@ class SetupTournamentGame implements ShouldQueue
         $groupsData = json_decode(file_get_contents($groupsPath), true);
 
         // Build FIFA code → Team UUID map from the database
-        $nationalTeams = Team::worldCupEligible()->get(['id', 'fifa_code', 'transfermarkt_id']);
+        $nationalTeams = Team::worldCupEligible()->get(['id', 'fifa_code']);
         $teamKeyMap = $nationalTeams->pluck('id', 'fifa_code')->toArray();
 
-        // Step 1: Create competition entries for all WC teams
-        $this->createCompetitionEntries();
+        DB::transaction(function () use ($game, $groupsData, $teamKeyMap, $nationalTeams, $notificationService) {
+            // Step 1: Create competition entries for all WC teams
+            $this->createCompetitionEntries();
 
-        // Step 2: Create fixtures from groups.json
-        $this->createFixtures($groupsData, $teamKeyMap);
+            // Step 2: Create fixtures from groups.json
+            $this->createFixtures($groupsData, $teamKeyMap);
 
-        // Step 3: Create standings with group labels
-        $this->createGroupStandings($groupsData, $teamKeyMap, $standingsCalculator);
+            // Step 3: Create standings with group labels
+            $this->createGroupStandings($groupsData, $teamKeyMap);
 
-        // Step 4: Create game players for teams with JSON rosters
-        $currentDate = $game->current_date ?? Carbon::parse('2025-06-10');
-        $teamsWithRosters = $nationalTeams->filter(fn ($t) => $t->transfermarkt_id !== null);
-        $this->createGamePlayers($teamsWithRosters, $developmentService, $currentDate);
+            // Step 4: Create game players from pre-computed templates
+            $wcTeamIds = $nationalTeams->pluck('id')->toArray();
+            $this->createGamePlayersFromTemplates($wcTeamIds);
 
-        // Compute tiers for all players based on market value
-        app(PlayerTierService::class)->recomputeAllTiersForGame($this->gameId);
+            // Send welcome notification
+            $teamName = $nationalTeams->firstWhere('id', $this->teamId)?->getRawOriginal('name') ?? '';
+            $notificationService->notifyTournamentWelcome($game, self::COMPETITION_ID, $teamName);
 
-        // Send welcome notification
-        $teamName = Team::find($this->teamId)?->name ?? '';
-        $notificationService->notifyTournamentWelcome($game, self::COMPETITION_ID, $teamName);
+            // Mark setup as complete
+            Game::where('id', $this->gameId)->update(['setup_completed_at' => now()]);
 
-        // Mark setup as complete
-        Game::where('id', $this->gameId)->update(['setup_completed_at' => now()]);
-
-        // Record activation event
-        app(\App\Modules\Season\Services\ActivationTracker::class)
-            ->record($game->user_id, \App\Models\ActivationEvent::EVENT_SETUP_COMPLETED, $this->gameId, \App\Models\Game::MODE_TOURNAMENT);
+            // Record activation event
+            app(\App\Modules\Season\Services\ActivationTracker::class)
+                ->record($game->user_id, \App\Models\ActivationEvent::EVENT_SETUP_COMPLETED, $this->gameId, \App\Models\Game::MODE_TOURNAMENT);
+        });
     }
 
     private function createCompetitionEntries(): void
@@ -92,18 +82,18 @@ class SetupTournamentGame implements ShouldQueue
             return;
         }
 
-        $competitionTeams = CompetitionTeam::where('competition_id', self::COMPETITION_ID)
+        $teamIds = CompetitionTeam::where('competition_id', self::COMPETITION_ID)
             ->where('season', '2025')
-            ->get();
+            ->pluck('team_id');
 
-        $rows = $competitionTeams->map(fn ($ct) => [
+        $rows = $teamIds->map(fn ($teamId) => [
             'game_id' => $this->gameId,
             'competition_id' => self::COMPETITION_ID,
-            'team_id' => $ct->team_id,
+            'team_id' => $teamId,
             'entry_round' => 1,
         ])->toArray();
 
-        foreach (array_chunk($rows, 100) as $chunk) {
+        foreach (array_chunk($rows, 500) as $chunk) {
             CompetitionEntry::insert($chunk);
         }
     }
@@ -139,12 +129,12 @@ class SetupTournamentGame implements ShouldQueue
             }
         }
 
-        foreach (array_chunk($matchRows, 100) as $chunk) {
+        foreach (array_chunk($matchRows, 500) as $chunk) {
             GameMatch::insert($chunk);
         }
     }
 
-    private function createGroupStandings(array $groupsData, array $teamKeyMap, StandingsCalculator $standingsCalculator): void
+    private function createGroupStandings(array $groupsData, array $teamKeyMap): void
     {
         if (GameStanding::where('game_id', $this->gameId)->exists()) {
             return;
@@ -178,88 +168,61 @@ class SetupTournamentGame implements ShouldQueue
             }
         }
 
-        foreach (array_chunk($rows, 100) as $chunk) {
+        foreach (array_chunk($rows, 500) as $chunk) {
             GameStanding::insert($chunk);
         }
     }
 
     /**
-     * Create game players only for teams that have JSON roster files.
+     * Copy pre-computed templates into game_players (mirrors SetupNewGame pattern).
      *
-     * @param \Illuminate\Support\Collection<int, Team> $teamsWithRosters
+     * @param array<string> $wcTeamIds
      */
-    private function createGamePlayers(Collection $teamsWithRosters, PlayerDevelopmentService $developmentService, Carbon $currentDate): void
+    private function createGamePlayersFromTemplates(array $wcTeamIds): void
     {
         if (GamePlayer::where('game_id', $this->gameId)->exists()) {
             return;
         }
 
-        $basePath = base_path('data/2025/WC2026/teams');
-        $allPlayers = Player::all()->keyBy('transfermarkt_id');
-        $playerRows = [];
+        $gameId = $this->gameId;
+        $userTeamId = $this->teamId;
 
-        foreach ($teamsWithRosters as $team) {
-            $filePath = "{$basePath}/{$team->transfermarkt_id}.json";
-            if (!file_exists($filePath)) {
-                continue;
-            }
+        DB::table('game_player_templates')
+            ->where('season', '2025')
+            ->whereIn('team_id', $wcTeamIds)
+            ->where('team_id', '!=', $userTeamId)
+            ->orderBy('player_id')
+            ->chunk(500, function ($templates) use ($gameId) {
+                $rows = [];
 
-            // Skip user's team — their players are created during squad selection
-            if ($team->id === $this->teamId) {
-                continue;
-            }
-
-            $data = json_decode(file_get_contents($filePath), true);
-            if (!$data) {
-                continue;
-            }
-
-            foreach ($data['players'] ?? [] as $playerData) {
-                $transfermarktId = $playerData['id'] ?? null;
-                if (!$transfermarktId) {
-                    continue;
+                foreach ($templates as $t) {
+                    $rows[] = [
+                        'id' => Str::uuid()->toString(),
+                        'game_id' => $gameId,
+                        'player_id' => $t->player_id,
+                        'team_id' => $t->team_id,
+                        'number' => null,
+                        'position' => $t->position,
+                        'market_value' => $t->market_value,
+                        'market_value_cents' => $t->market_value_cents,
+                        'contract_until' => $t->contract_until,
+                        'annual_wage' => $t->annual_wage,
+                        'fitness' => $t->fitness,
+                        'morale' => $t->morale,
+                        'durability' => $t->durability,
+                        'game_technical_ability' => $t->game_technical_ability,
+                        'game_physical_ability' => $t->game_physical_ability,
+                        'potential' => $t->potential,
+                        'potential_low' => $t->potential_low,
+                        'potential_high' => $t->potential_high,
+                        'tier' => $t->tier,
+                        'season_appearances' => 0,
+                    ];
                 }
 
-                $player = $allPlayers->get($transfermarktId);
-                if (!$player) {
-                    continue;
+                if (!empty($rows)) {
+                    GamePlayer::insert($rows);
                 }
-
-                $currentAbility = (int) round(
-                    ($player->technical_ability + $player->physical_ability) / 2
-                );
-                $age = (int) $player->date_of_birth->diffInYears($currentDate);
-                $potentialData = $developmentService->generatePotential(
-                    $age,
-                    $currentAbility
-                );
-
-                $playerRows[] = [
-                    'id' => Str::uuid()->toString(),
-                    'game_id' => $this->gameId,
-                    'player_id' => $player->id,
-                    'team_id' => $team->id,
-                    'number' => null,
-                    'position' => $playerData['position'] ?? 'Central Midfield',
-                    'market_value' => null,
-                    'market_value_cents' => 0,
-                    'contract_until' => null,
-                    'annual_wage' => 0,
-                    'fitness' => rand(90, 100),
-                    'morale' => rand(70, 85),
-                    'durability' => InjuryService::generateDurability(),
-                    'game_technical_ability' => $player->technical_ability,
-                    'game_physical_ability' => $player->physical_ability,
-                    'potential' => $potentialData['potential'],
-                    'potential_low' => $potentialData['low'],
-                    'potential_high' => $potentialData['high'],
-                    'season_appearances' => 0,
-                ];
-            }
-        }
-
-        foreach (array_chunk($playerRows, 100) as $chunk) {
-            GamePlayer::insert($chunk);
-        }
+            });
     }
 }

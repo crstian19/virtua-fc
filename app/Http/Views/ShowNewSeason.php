@@ -4,8 +4,6 @@ namespace App\Http\Views;
 
 use App\Modules\Finance\Services\BudgetProjectionService;
 use App\Modules\Season\Services\SeasonGoalService;
-use App\Modules\Season\Jobs\SetupNewGame;
-use App\Modules\Season\Jobs\SetupTournamentGame;
 use App\Models\Competition;
 use App\Models\Game;
 use App\Models\GameInvestment;
@@ -29,20 +27,7 @@ class ShowNewSeason
         if (!$game->isSetupComplete()) {
             // If stuck for > 2 minutes, re-dispatch the setup job
             if ($game->created_at->lt(now()->subMinutes(2))) {
-                if ($game->isTournamentMode()) {
-                    SetupTournamentGame::dispatch(
-                        gameId: $game->id,
-                        teamId: $game->team_id,
-                    );
-                } else {
-                    SetupNewGame::dispatch(
-                        gameId: $game->id,
-                        teamId: $game->team_id,
-                        competitionId: $game->competition_id,
-                        season: $game->season,
-                        gameMode: $game->game_mode ?? Game::MODE_CAREER,
-                    );
-                }
+                $game->redispatchSetupJob();
             }
             return view('game-loading', [
                 'game' => $game,

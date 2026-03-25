@@ -6,8 +6,6 @@ use App\Models\Game;
 use App\Modules\Match\Jobs\ProcessMatchdayAdvance;
 use App\Modules\Match\Jobs\ProcessRemainingBatches;
 use App\Modules\Season\Jobs\ProcessSeasonTransition;
-use App\Modules\Season\Jobs\SetupNewGame;
-use App\Modules\Season\Jobs\SetupTournamentGame;
 use App\Modules\Season\Services\SeasonClosingPipeline;
 use App\Modules\Season\Services\SeasonSetupPipeline;
 use Illuminate\Http\JsonResponse;
@@ -32,20 +30,7 @@ class GameSetupStatus
 
         // Recovery: re-dispatch if initial game setup is stuck for > 2 minutes
         if (!$game->isSetupComplete() && $game->created_at->lt(now()->subMinutes(2))) {
-            if ($game->isTournamentMode()) {
-                SetupTournamentGame::dispatch(
-                    gameId: $game->id,
-                    teamId: $game->team_id,
-                );
-            } else {
-                SetupNewGame::dispatch(
-                    gameId: $game->id,
-                    teamId: $game->team_id,
-                    competitionId: $game->competition_id,
-                    season: $game->season,
-                    gameMode: $game->game_mode ?? Game::MODE_CAREER,
-                );
-            }
+            $game->redispatchSetupJob();
         }
 
         // Recovery: clear flag if career actions are stuck for > 2 minutes
