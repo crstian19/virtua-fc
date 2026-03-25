@@ -14,7 +14,7 @@ use Carbon\Carbon;
 final class PlayerAge
 {
     // Career boundaries
-    public const ACADEMY_END = 20;        // 21+ must leave academy
+    public const ACADEMY_END = 21;        // 21+ must leave academy
 
     // Development categories
     public const YOUNG_END = 23;          // Growing phase ends
