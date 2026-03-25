@@ -1236,10 +1236,10 @@ class TransferService
         if ($game->isTransferWindowOpen()) {
             if ($offer->offer_type === TransferOffer::TYPE_LOAN_IN) {
                 $this->completeLoanIn($offer, $game);
-            } else {
-                $this->completeIncomingTransfer($offer, $game);
+                return true;
             }
-            return true;
+
+            return $this->completeIncomingTransfer($offer, $game);
         }
 
         // Otherwise, mark as agreed (waiting for next transfer window)
@@ -1253,19 +1253,19 @@ class TransferService
      * @param  bool  $skipSquadCheck  Skip squad-full check (used for season-close pre-contracts
      *                                where SquadCapEnforcementProcessor handles trimming)
      */
-    private function completeIncomingTransfer(TransferOffer $offer, Game $game, bool $skipSquadCheck = false): void
+    private function completeIncomingTransfer(TransferOffer $offer, Game $game, bool $skipSquadCheck = false): bool
     {
         // Safety net: reject if squad is full (skipped for season-close pre-contracts)
         if (!$skipSquadCheck && ContractService::isSquadFull($game)) {
             $offer->update(['status' => TransferOffer::STATUS_REJECTED, 'resolved_at' => $game->current_date]);
-            return;
+            return false;
         }
 
         // Safety net: reject if budget would go negative
         $investment = $game->currentInvestment;
         if ($offer->transfer_fee > 0 && $investment && $offer->transfer_fee > $investment->transfer_budget) {
             $offer->update(['status' => TransferOffer::STATUS_REJECTED, 'resolved_at' => $game->current_date]);
-            return;
+            return false;
         }
 
         $player = $offer->gamePlayer;
@@ -1320,6 +1320,8 @@ class TransferService
 
         // Remove from shortlist to free up scouting slot
         ShortlistedPlayer::removeForPlayer($game->id, $player->id);
+
+        return true;
     }
 
     /**

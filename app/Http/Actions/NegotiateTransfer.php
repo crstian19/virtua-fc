@@ -481,6 +481,25 @@ class NegotiateTransfer
     {
         $completedImmediately = $this->transferService->acceptIncomingOffer($offer);
 
+        // Transfer was rejected by a safety check (squad full, budget exceeded)
+        if ($completedImmediately === false && $offer->refresh()->status === TransferOffer::STATUS_REJECTED) {
+            $reason = ContractService::isSquadFull($game)
+                ? __('messages.squad_full', ['max' => ContractService::MAX_SQUAD_SIZE])
+                : __('messages.transfer_failed');
+
+            return response()->json([
+                'status' => 'ok',
+                'negotiation_status' => 'rejected',
+                'round' => $offer->terms_round ?? $offer->negotiation_round,
+                'max_rounds' => self::MAX_ROUNDS,
+                'messages' => [
+                    $this->agentMessage('rejected', [
+                        'text' => $reason,
+                    ]),
+                ],
+            ]);
+        }
+
         if ($completedImmediately) {
             $this->notificationService->notifyTransferComplete($game, $offer->refresh());
         }
