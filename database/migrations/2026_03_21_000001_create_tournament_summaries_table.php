@@ -12,7 +12,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('team_id')->constrained();
-            $table->foreignUuid('competition_id')->constrained();
+            $table->string('competition_id', 10);
+            $table->foreign('competition_id')->references('id')->on('competitions');
             $table->string('result_label');
             $table->json('your_record');
             $table->json('summary_data');
