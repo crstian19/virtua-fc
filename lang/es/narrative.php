@@ -36,7 +36,7 @@ return [
     'streak_win_long_v1' => ':count victorias consecutivas. El vestuario rebosa confianza.',
     'streak_win_long_v2' => 'Una racha impresionante de :count triunfos seguidos. ¿Podrá continuar?',
 
-    'streak_win_v1' => ':count victorias seguidas antes de este partido.',
+    'streak_win_v1' => ':count victorias seguidas. A seguir la racha.',
     'streak_win_v2' => 'En racha con :count triunfos consecutivos. El impulso crece.',
 
     'streak_lose_v1' => ':count derrotas seguidas. La presión aumenta.',
@@ -134,7 +134,7 @@ return [
 
     // ── Torneo: Fase Eliminatoria ───────────────────────────────────
 
-    'wc_knockout_r32_v1' => 'Treintaidosavos de final. Eliminatoria directa, sin margen de error.',
+    'wc_knockout_r32_v1' => 'Dieciseisavos de final. Eliminatoria directa, sin margen de error.',
     'wc_knockout_r32_v2' => 'Comienza la fase eliminatoria. Una derrota aquí supone el final del torneo.',
     'wc_knockout_r32_v3' => 'A VIDA O MUERTE. Arranca la fase de eliminación directa.',
 

@@ -172,6 +172,20 @@
                         @endif
 
                         @if($isLive)
+                        {{-- Card indicator (live mode) --}}
+                        <span
+                            x-show="redCardedPlayerIds.includes(slot.player?.id)"
+                            x-cloak
+                            class="absolute -top-1.5 -left-1.5 w-3 h-4 rounded-[2px] bg-accent-red shadow-sm border border-black/20 z-10"
+                        ></span>
+                        <span
+                            x-show="isPlayerYellowCarded(slot.player?.id) && !redCardedPlayerIds.includes(slot.player?.id)"
+                            x-cloak
+                            class="absolute -top-1.5 -left-1.5 w-3 h-4 rounded-[2px] bg-accent-gold shadow-sm border border-black/20 z-10"
+                        ></span>
+                        @endif
+
+                        @if($isLive)
                         {{-- Energy indicator ring (live mode) --}}
                         <span
                             class="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-1 rounded-full shadow-sm"

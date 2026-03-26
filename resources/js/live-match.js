@@ -970,6 +970,7 @@ export default function liveMatch(config) {
             if (playerData) {
                 this.livePitchSelectedOutId = slot.player.id;
                 this.selectedPlayerOut = playerData;
+                this.selectedPlayerIn = null;
             }
         },
 
