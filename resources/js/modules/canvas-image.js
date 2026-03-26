@@ -79,9 +79,9 @@ export function drawSectionLabel(ctx, text, x, y) {
  * Draw a team header block: crest + name + optional subtitle line.
  * Returns the new y position after the header (including divider).
  */
-export async function drawTeamHeader(ctx, { crestUrl, name, subtitle, subtitleColor, padding, width, y }) {
+export async function drawTeamHeader(ctx, { crestUrl, name, subtitle, subtitleColor, padding, width, y, crestRatio = 1 }) {
     const crestHeight = 52;
-    const crestWidth = 52;
+    const crestWidth = Math.round(crestHeight * crestRatio);
     const crest = await drawTeamCrest(ctx, crestUrl, padding, y, crestWidth, crestHeight);
 
     const textX = crest.loaded ? padding + crestWidth + 16 : padding;

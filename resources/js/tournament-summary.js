@@ -33,6 +33,7 @@ export default function tournamentSummary(config) {
                 name: this.teamName,
                 subtitle: this.resultLabel,
                 subtitleColor: this.isChampion ? '#f59e0b' : '#94a3b8',
+                crestRatio: 4 / 3,
                 padding, width, y,
             });
 

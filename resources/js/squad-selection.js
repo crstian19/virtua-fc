@@ -63,6 +63,7 @@ export default function squadSelection(config) {
             y = await drawTeamHeader(ctx, {
                 crestUrl: this.teamCrestUrl,
                 name: this.teamName,
+                crestRatio: 4 / 3,
                 padding, width, y,
             });
             y += 4; // extra spacing before squad list
