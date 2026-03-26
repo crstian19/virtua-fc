@@ -158,6 +158,10 @@ class ShowGame
         // Add knockout progress for tournament mode
         if ($game->isTournamentMode()) {
             $viewData['tournamentTie'] = $this->getPlayerTournamentTie($game);
+
+            if ($nextMatch?->cup_tie_id) {
+                $viewData['nextRoundPreview'] = $this->getNextRoundPreview($nextMatch->cupTie);
+            }
         }
 
         // Add pre-season data
@@ -267,5 +271,46 @@ class ShowGame
                 ->orWhere('away_team_id', $game->team_id))
             ->orderByDesc('round_number')
             ->first();
+    }
+
+    /**
+     * Find the opposite tie in the bracket that determines the next-round opponent.
+     *
+     * Ties within a round are paired by bracket_position order: indices 0↔1, 2↔3, etc.
+     * Returns an array with the opposite tie and, if resolved, the actual opponent team.
+     *
+     * @return array{tie: CupTie, opponent: ?Team}|null
+     */
+    private function getNextRoundPreview(CupTie $currentTie): ?array
+    {
+        $tiesInRound = CupTie::with(['homeTeam', 'awayTeam', 'winner'])
+            ->where('game_id', $currentTie->game_id)
+            ->where('competition_id', $currentTie->competition_id)
+            ->where('round_number', $currentTie->round_number)
+            ->orderBy('bracket_position')
+            ->orderBy('id')
+            ->get();
+
+        if ($tiesInRound->count() < 2) {
+            return null; // Final — no next round
+        }
+
+        $index = $tiesInRound->search(fn ($t) => $t->id === $currentTie->id);
+
+        if ($index === false) {
+            return null;
+        }
+
+        $oppositeIndex = ($index % 2 === 0) ? $index + 1 : $index - 1;
+        $oppositeTie = $tiesInRound->get($oppositeIndex);
+
+        if (! $oppositeTie) {
+            return null;
+        }
+
+        return [
+            'tie' => $oppositeTie,
+            'opponent' => $oppositeTie->completed ? $oppositeTie->winner : null,
+        ];
     }
 }
