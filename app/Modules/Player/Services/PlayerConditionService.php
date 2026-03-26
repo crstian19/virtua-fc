@@ -37,9 +37,9 @@ class PlayerConditionService
      * @param  \Illuminate\Support\Collection  $matches  All matches in this matchday batch
      * @param  array  $matchResults  Match result data including events
      * @param  \Illuminate\Support\Collection  $allPlayersByTeam  Pre-loaded players grouped by team_id
-     * @param  int  $daysSinceLastMatchday  Calendar days since the previous matchday
+     * @param  array<string, int>  $recoveryDaysByTeam  team_id => calendar days since that team's last match
      */
-    public function batchUpdateAfterMatchday($matches, array $matchResults, $allPlayersByTeam, int $daysSinceLastMatchday): void
+    public function batchUpdateAfterMatchday($matches, array $matchResults, $allPlayersByTeam, array $recoveryDaysByTeam): void
     {
         $updates = [];
 
@@ -69,8 +69,9 @@ class PlayerConditionService
 
                 $isInLineup = in_array($player->id, $lineupIds);
                 $isHome = $player->team_id === $match->home_team_id;
+                $teamRecoveryDays = $recoveryDaysByTeam[$player->team_id] ?? 7;
 
-                $fitnessChange = $this->calculateFitnessChange($player, $isInLineup, $daysSinceLastMatchday);
+                $fitnessChange = $this->calculateFitnessChange($player, $isInLineup, $teamRecoveryDays);
                 $moraleChange = $this->calculateMoraleChange(
                     $player,
                     $isInLineup,

@@ -258,7 +258,7 @@ class PlayerConditionServiceTest extends TestCase
             collect([$match]),
             [['matchId' => $match->id, 'events' => []]],
             $allPlayersByTeam,
-            14 // 14 days rest
+            [$homeTeam->id => 14, $awayTeam->id => 14],
         );
 
         $player->refresh();
@@ -289,11 +289,12 @@ class PlayerConditionServiceTest extends TestCase
 
         $allPlayersByTeam = collect([$team->id => collect([$player])]);
 
+        $awayTeamId = $match->away_team_id;
         $this->service->batchUpdateAfterMatchday(
             collect([$match]),
             [['matchId' => $match->id, 'events' => []]],
             $allPlayersByTeam,
-            1 // only 1 day since last match
+            [$team->id => 1, $awayTeamId => 1],
         );
 
         $player->refresh();

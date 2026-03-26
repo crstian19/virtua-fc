@@ -35,9 +35,6 @@ class MatchResultProcessor
         // Load game once for previous date capture and date guard
         $game = Game::find($gameId);
 
-        // Capture previous date BEFORE updating game state (used for recovery calculation)
-        $previousDate = $game->current_date ? Carbon::parse($game->current_date) : null;
-
         // 1. Update game state (replaces onMatchdayAdvanced projector)
         // Only advance current_date forward — background batch processing must not
         // regress the date that was already set by the player's batch.
@@ -92,8 +89,12 @@ class MatchResultProcessor
         // 6b. Record auto-substitutions in match substitutions JSON
         $this->recordAutoSubstitutions($matches, $matchResults);
 
-        // 7. Batch update conditions for all matches
-        $this->batchUpdateConditions($matches, $matchResults, $allPlayers ?? collect(), $previousDate);
+        // 7. Batch update conditions (exclude deferred match — finalization handles it)
+        $conditionMatches = $deferMatchId ? $matches->except($deferMatchId) : $matches;
+        $conditionResults = $deferMatchId
+            ? array_filter($matchResults, fn ($r) => $r['matchId'] !== $deferMatchId)
+            : $matchResults;
+        $this->batchUpdateConditions($conditionMatches, $conditionResults, $allPlayers ?? collect());
 
         // 8. Batch update goalkeeper stats (skip deferred match)
         $gkResults = $deferMatchId
@@ -591,21 +592,55 @@ class MatchResultProcessor
     /**
      * Batch update fitness and morale for all matches in a single query.
      *
-     * Uses the game's previous current_date (before this matchday's update) to compute
-     * recovery days uniformly for all teams, instead of per-team lookups.
+     * Computes per-team recovery days based on each team's last played match,
+     * not the global matchday gap (which is wrong for tournaments with staggered schedules).
      */
-    private function batchUpdateConditions($matches, array $matchResults, $allPlayers, ?Carbon $previousDate): void
+    private function batchUpdateConditions($matches, array $matchResults, $allPlayers): void
     {
         if ($matches->isEmpty()) {
             return;
         }
 
-        $daysSinceLastMatchday = 7; // default: full recovery for first matchday
-        if ($previousDate) {
-            $daysSinceLastMatchday = (int) $previousDate->diffInDays($matches->first()->scheduled_date);
+        $currentMatchDate = $matches->first()->scheduled_date;
+        $gameId = $matches->first()->game_id;
+
+        // Collect all team IDs from this batch
+        $teamIds = $matches->flatMap(fn ($m) => [$m->home_team_id, $m->away_team_id])->unique()->values();
+
+        // Query each team's most recent played match BEFORE this batch's date
+        $lastMatchDates = DB::table('game_matches')
+            ->where('game_id', $gameId)
+            ->where('played', true)
+            ->where('scheduled_date', '<', $currentMatchDate->toDateString())
+            ->where(fn ($q) => $q
+                ->whereIn('home_team_id', $teamIds)
+                ->orWhereIn('away_team_id', $teamIds))
+            ->get(['home_team_id', 'away_team_id', 'scheduled_date']);
+
+        // Build per-team last-match lookup
+        $lastPlayedByTeam = [];
+        foreach ($lastMatchDates as $row) {
+            $date = Carbon::parse($row->scheduled_date);
+            foreach ([$row->home_team_id, $row->away_team_id] as $tid) {
+                if ($teamIds->contains($tid)) {
+                    if (! isset($lastPlayedByTeam[$tid]) || $date->gt($lastPlayedByTeam[$tid])) {
+                        $lastPlayedByTeam[$tid] = $date;
+                    }
+                }
+            }
         }
 
-        $this->conditionService->batchUpdateAfterMatchday($matches, $matchResults, $allPlayers, $daysSinceLastMatchday);
+        // Compute recovery days per team
+        $recoveryDaysByTeam = [];
+        foreach ($teamIds as $tid) {
+            if (isset($lastPlayedByTeam[$tid])) {
+                $recoveryDaysByTeam[$tid] = (int) $lastPlayedByTeam[$tid]->diffInDays($currentMatchDate);
+            } else {
+                $recoveryDaysByTeam[$tid] = 7; // first match of the season: full recovery
+            }
+        }
+
+        $this->conditionService->batchUpdateAfterMatchday($matches, $matchResults, $allPlayers, $recoveryDaysByTeam);
     }
 
     /**
