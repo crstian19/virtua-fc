@@ -344,6 +344,24 @@ class NegotiateTransfer
             ]);
         }
 
+        // Reputation gate: player may refuse to negotiate with a lower-reputation club
+        $willingness = $this->contractService->checkPlayerWillingness($offer, $game, $this->scoutingService);
+        if (! $willingness['willing']) {
+            return response()->json([
+                'status' => 'ok',
+                'negotiation_status' => 'rejected',
+                'round' => 0,
+                'max_rounds' => self::MAX_ROUNDS,
+                'messages' => [
+                    $this->agentMessage('rejected', [
+                        'text' => __('transfers.chat_player_not_interested', [
+                            'player' => $player->name,
+                        ]),
+                    ]),
+                ],
+            ]);
+        }
+
         // Reuse stored demand if already calculated, otherwise compute and persist
         if ($offer->player_demand && $offer->preferred_years) {
             $demand = [

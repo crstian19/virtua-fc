@@ -531,19 +531,6 @@ class ScoutingService
      */
     public function evaluateBid(GamePlayer $player, int $bidAmount, ?Game $game = null, ?int $previousCounter = null): array
     {
-        // Reputation gate: player may refuse to join a lower-reputation club
-        if ($game) {
-            $reputationModifier = $this->calculateReputationModifier($game->team, $player);
-            if ($reputationModifier < 1.0 && rand(1, 100) > (int) ($reputationModifier * 100)) {
-                return [
-                    'result' => 'rejected',
-                    'counter_amount' => null,
-                    'asking_price' => $this->calculateAskingPrice($player),
-                    'message' => __('transfers.bid_rejected_not_interested', ['team' => $player->team?->name]),
-                ];
-            }
-        }
-
         $askingPrice = $this->calculateAskingPrice($player);
 
         // Use the previous counter as ceiling so the club never raises their demand
