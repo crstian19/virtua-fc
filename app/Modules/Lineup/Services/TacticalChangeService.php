@@ -49,11 +49,9 @@ class TacticalChangeService
             // When the formation changes, clear stale slot assignments — slot IDs
             // map to different positions per formation.
             if ($formation !== $match->{"{$prefix}_formation"}) {
-                $game->tactics?->update([
-                    'default_pitch_positions' => $pitchPositions,
-                    'default_slot_assignments' => null,
-                ]);
-                $pitchPositions = null; // already saved
+                $matchUpdates["{$prefix}_pitch_positions"] = $pitchPositions;
+                $matchUpdates["{$prefix}_slot_assignments"] = null;
+                $pitchPositions = null; // already queued
             }
         }
         if ($mentality !== null) {
@@ -69,13 +67,13 @@ class TacticalChangeService
             $matchUpdates["{$prefix}_defensive_line"] = $defensiveLine;
         }
 
-        if (! empty($matchUpdates)) {
-            $match->update($matchUpdates);
+        // Persist pitch positions on the match (if not already queued during formation change)
+        if ($pitchPositions !== null) {
+            $matchUpdates["{$prefix}_pitch_positions"] = $pitchPositions;
         }
 
-        // Persist pitch positions (if not already saved during formation change)
-        if ($pitchPositions !== null && $game->tactics) {
-            $game->tactics->update(['default_pitch_positions' => $pitchPositions]);
+        if (! empty($matchUpdates)) {
+            $match->update($matchUpdates);
         }
 
         // Build allSubs = previous + new (with minute)

@@ -60,7 +60,8 @@ class ProcessTacticalActions
             || ! empty($validated['mentality'])
             || ! empty($validated['playing_style'])
             || ! empty($validated['pressing'])
-            || ! empty($validated['defensive_line']);
+            || ! empty($validated['defensive_line'])
+            || ! empty($validated['pitch_positions']);
 
         if (! $hasSubs && ! $hasTactics) {
             return response()->json(['error' => __('game.tactical_no_changes')], 422);
