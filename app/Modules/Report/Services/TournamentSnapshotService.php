@@ -2,6 +2,7 @@
 
 namespace App\Modules\Report\Services;
 
+use App\Events\TournamentCompleted;
 use App\Models\Game;
 use App\Models\TournamentSummary;
 
@@ -37,6 +38,8 @@ class TournamentSnapshotService
             'is_champion' => $data['resultLabel'] === 'champion',
             'result_points' => self::computeResultPoints($data['resultLabel']),
         ]);
+
+        TournamentCompleted::dispatch($game->user_id, $summary->is_champion);
 
         $this->pruneOldSummaries($game->user_id);
 
