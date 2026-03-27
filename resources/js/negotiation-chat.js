@@ -24,6 +24,7 @@ export default function negotiationChat() {
         // Input state
         offerWage: 0,
         offerYears: 3,
+        counterFloor: 0,
 
         // Budget cap state (transfer fee mode)
         availableBudget: 0,
@@ -74,7 +75,8 @@ export default function negotiationChat() {
         },
 
         decrementWage() {
-            this.offerWage = Math.max(this.offerWage - this.wageStep, 0);
+            const floor = this.phase === 'counter_offer' ? this.counterFloor : 0;
+            this.offerWage = Math.max(this.offerWage - this.wageStep, floor);
         },
 
         startHold(fn) {
@@ -418,6 +420,11 @@ export default function negotiationChat() {
                 this.offerWage = fee;
             }
             if (lastMsg?.options?.preferredYears) this.offerYears = lastMsg.options.preferredYears;
+
+            // Set floor for counter-offer mode to the AI's current bid
+            if (this.phase === 'counter_offer' && lastMsg?.content?.fee) {
+                this.counterFloor = lastMsg.content.fee;
+            }
         },
 
         clearLastOptions() {

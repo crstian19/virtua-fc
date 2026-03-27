@@ -120,7 +120,12 @@ class NegotiateCounterOffer
         $buyerName = $offer->offeringTeam->name;
         $player = $offer->gamePlayer;
 
-        if ($userAskingCents <= $offer->transfer_fee) {
+        // If user submits the same amount as the AI's offer, treat as acceptance
+        if ($userAskingCents == $offer->transfer_fee) {
+            return $this->handleAcceptCounter($game, $offer);
+        }
+
+        if ($userAskingCents < $offer->transfer_fee) {
             return response()->json([
                 'status' => 'error',
                 'message' => __('transfers.counter_must_be_higher'),
