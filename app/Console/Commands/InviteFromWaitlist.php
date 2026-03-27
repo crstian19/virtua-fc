@@ -77,7 +77,7 @@ class InviteFromWaitlist extends Command
             return self::FAILURE;
         }
 
-        $pending = WaitlistEntry::whereDoesntHave('inviteCode')->count();
+        $pending = WaitlistEntry::whereDoesntHave('inviteCode')->earlyAdopter()->count();
 
         if ($pending === 0) {
             $this->info('No pending waitlist entries to invite.');
@@ -89,6 +89,7 @@ class InviteFromWaitlist extends Command
 
         if ($this->option('dry-run')) {
             $entries = WaitlistEntry::whereDoesntHave('inviteCode')
+                ->earlyAdopter()
                 ->inRandomOrder()
                 ->limit($count)
                 ->get();

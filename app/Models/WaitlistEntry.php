@@ -43,6 +43,17 @@ class WaitlistEntry extends Model
         $this->attributes['email'] = strtolower(trim($value));
     }
 
+    public function scopeEarlyAdopter($query)
+    {
+        $cutoff = config('beta.early_adopter_cutoff');
+
+        if ($cutoff) {
+            $query->where('created_at', '<=', $cutoff);
+        }
+
+        return $query;
+    }
+
     public function inviteCode(): HasOne
     {
         return $this->hasOne(InviteCode::class, 'email', 'email');

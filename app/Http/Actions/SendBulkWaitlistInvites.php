@@ -14,7 +14,7 @@ class SendBulkWaitlistInvites
             return back()->with('error', __('admin.waitlist_beta_disabled'));
         }
 
-        $pending = WaitlistEntry::whereDoesntHave('inviteCode')->count();
+        $pending = WaitlistEntry::whereDoesntHave('inviteCode')->earlyAdopter()->count();
 
         if ($pending === 0) {
             return back()->with('error', __('admin.waitlist_no_pending'));

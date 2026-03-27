@@ -25,6 +25,7 @@ class ProcessBulkWaitlistInvites implements ShouldQueue
     public function handle(BetaInviteService $inviteService): void
     {
         $entries = WaitlistEntry::whereDoesntHave('inviteCode')
+            ->earlyAdopter()
             ->inRandomOrder()
             ->limit($this->count)
             ->get();

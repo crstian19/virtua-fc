@@ -40,6 +40,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Early Adopter Cutoff
+    |--------------------------------------------------------------------------
+    |
+    | Waitlist entries created after this UTC timestamp are excluded from
+    | bulk invitations. Individual invites can still bypass this cutoff.
+    |
+    */
+
+    'early_adopter_cutoff' => env('BETA_EARLY_ADOPTER_CUTOFF', '2026-03-27 21:00:00'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment Webhook Secret
     |--------------------------------------------------------------------------
     |
