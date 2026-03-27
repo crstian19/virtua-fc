@@ -20,7 +20,7 @@ class TournamentCreationService
             'id' => $gameId,
             'user_id' => $userId,
             'game_mode' => Game::MODE_TOURNAMENT,
-            'country' => $team->country ?? 'XX',
+            'country' => $team->fifa_code ?? 'XXX',
             'team_id' => $teamId,
             'competition_id' => 'WC2026',
             'season' => '2025',
