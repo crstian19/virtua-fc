@@ -879,8 +879,8 @@ class MatchdayOrchestrator
         };
 
         // Position-scaled event bonuses (rarer contributions score higher)
-        $goalBonuses = ['Goalkeeper' => 0.50, 'Defender' => 0.35, 'Midfielder' => 0.25, 'Forward' => 0.15];
-        $assistBonuses = ['Goalkeeper' => 0.25, 'Defender' => 0.15, 'Midfielder' => 0.10, 'Forward' => 0.10];
+        $goalBonuses = ['Goalkeeper' => 0.50, 'Defender' => 0.35, 'Midfielder' => 0.25, 'Forward' => 0.20];
+        $assistBonuses = ['Goalkeeper' => 0.25, 'Defender' => 0.15, 'Midfielder' => 0.15, 'Forward' => 0.15];
 
         // Count events per player
         $goals = [];
@@ -922,7 +922,7 @@ class MatchdayOrchestrator
             // Clean sheet bonus for goalkeepers and defenders
             if ($teamConceded === 0) {
                 $score += match ($group) {
-                    'Goalkeeper' => 0.25,
+                    'Goalkeeper' => 0.20,
                     'Defender' => 0.15,
                     default => 0.0,
                 };
