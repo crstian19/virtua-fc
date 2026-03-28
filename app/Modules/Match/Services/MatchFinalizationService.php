@@ -97,7 +97,8 @@ class MatchFinalizationService
     private function updateConditionsForDeferredMatch(GameMatch $match): void
     {
         $teamIds = [$match->home_team_id, $match->away_team_id];
-        $players = GamePlayer::where('game_id', $match->game_id)
+        $players = GamePlayer::with('player')
+            ->where('game_id', $match->game_id)
             ->whereIn('team_id', $teamIds)
             ->get();
 
@@ -138,6 +139,7 @@ class MatchFinalizationService
             $matchResults,
             $playersByTeam,
             $recoveryDaysByTeam,
+            $match->scheduled_date,
         );
     }
 

@@ -640,7 +640,7 @@ class MatchResultProcessor
             }
         }
 
-        $this->conditionService->batchUpdateAfterMatchday($matches, $matchResults, $allPlayers, $recoveryDaysByTeam);
+        $this->conditionService->batchUpdateAfterMatchday($matches, $matchResults, $allPlayers, $recoveryDaysByTeam, $currentMatchDate);
     }
 
     /**
