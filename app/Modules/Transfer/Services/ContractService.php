@@ -61,8 +61,8 @@ class ContractService
      * Veteran: Legacy contracts from peak years - overpaid relative to current value.
      */
     private const AGE_WAGE_MODIFIERS = [
-        'academy' => 0.60,
-        'young' => 0.85,
+        'academy' => 0.25,
+        'young' => 0.65,
         'prime' => 1.0,
         'veteran' => 5.0,
     ];
@@ -111,7 +111,7 @@ class ContractService
     /**
      * Get age-based wage modifier using PlayerAge tiers.
      *
-     * @return float Multiplier (0.60 for academy to 5.0 for veterans)
+     * @return float Multiplier (0.25 for academy to 5.0 for veterans)
      */
     private function getAgeWageModifier(?int $age): float
     {
