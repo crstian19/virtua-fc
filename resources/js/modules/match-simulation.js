@@ -208,6 +208,8 @@ export function createMatchSimulation(ctx) {
             updateScore(event);
             triggerGoalFlash();
             pauseForDrama(1500);
+        } else {
+            pauseForDrama(1500);
         }
 
         // Auto-open tactical panel on substitutions tab when user's player gets injured
@@ -232,6 +234,8 @@ export function createMatchSimulation(ctx) {
         if (event.type === 'goal' || event.type === 'own_goal') {
             updateScore(event);
             triggerGoalFlash();
+            pauseForDrama(1500);
+        } else {
             pauseForDrama(1500);
         }
     }
