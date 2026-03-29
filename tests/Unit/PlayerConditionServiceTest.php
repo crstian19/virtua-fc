@@ -169,7 +169,7 @@ class PlayerConditionServiceTest extends TestCase
 
         // Use reflection to test the age modifier directly
         $getAgeLossModifier = new ReflectionMethod(PlayerConditionService::class, 'getAgeLossModifier');
-        $config = config('match_simulation.fatigue');
+        $config = config('player.condition');
 
         // Mock young player age by checking the config thresholds
         $youngMod = $config['age_loss_modifier']['young'];

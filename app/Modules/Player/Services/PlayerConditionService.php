@@ -3,6 +3,7 @@
 namespace App\Modules\Player\Services;
 
 use App\Models\GamePlayer;
+use App\Modules\Player\PlayerAge;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -130,7 +131,7 @@ class PlayerConditionService
      */
     private function calculateFitnessChange(GamePlayer $player, bool $playedMatch, int $daysSinceLastMatch, Carbon $currentDate): int
     {
-        $config = config('match_simulation.fatigue');
+        $config = config('player.condition');
         $currentFitness = $player->fitness;
 
         // Nonlinear recovery: faster when far below 100, slow near the top
@@ -167,9 +168,8 @@ class PlayerConditionService
         $ageMod = $config['age_loss_modifier'];
 
         return match (true) {
-            $age < $ageMod['young_threshold'] => $ageMod['young'],
-            $age < $ageMod['peak_threshold'] => $ageMod['peak'],
-            $age < $ageMod['veteran_threshold'] => $ageMod['experienced'],
+            $age <= PlayerAge::YOUNG_END => $ageMod['young'],
+            $age < PlayerAge::MIN_RETIREMENT_OUTFIELD => $ageMod['prime'],
             default => $ageMod['veteran'],
         };
     }

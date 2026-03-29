@@ -249,7 +249,7 @@ class LineupService
      */
     private function effectiveScore(GamePlayer $player): float
     {
-        $threshold = (int) config('match_simulation.fatigue.ai_rotation_threshold', 80);
+        $threshold = (int) config('player.condition.ai_rotation_threshold', 80);
 
         if ($player->fitness >= $threshold) {
             return (float) $player->overall_score;
