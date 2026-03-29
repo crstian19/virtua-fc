@@ -34,12 +34,34 @@ class DeleteGameJob implements ShouldQueue
 
         Cache::forget("game_owner:{$this->gameId}");
 
+        // Collect generated player IDs before cascade removes game_players
+        $generatedPlayerIds = DB::table('game_players')
+            ->join('players', 'players.id', '=', 'game_players.player_id')
+            ->where('game_players.game_id', $this->gameId)
+            ->where('players.transfermarkt_id', 'like', 'gen-%')
+            ->pluck('game_players.player_id')
+            ->all();
+
         // Pre-delete the largest tables to avoid a single massive CASCADE transaction
         DB::table('match_events')->where('game_id', $this->gameId)->delete();
         DB::table('game_notifications')->where('game_id', $this->gameId)->delete();
         DB::table('game_matches')->where('game_id', $this->gameId)->delete();
 
-        // CASCADE handles the remaining small tables
+        // CASCADE handles the remaining small tables (including game_players)
         $game->delete();
+
+        // Clean up generated players that are now orphaned
+        if (! empty($generatedPlayerIds)) {
+            foreach (array_chunk($generatedPlayerIds, 500) as $chunk) {
+                DB::table('players')
+                    ->whereIn('id', $chunk)
+                    ->whereNotExists(function ($query) {
+                        $query->select(DB::raw(1))
+                            ->from('game_players')
+                            ->whereColumn('game_players.player_id', 'players.id');
+                    })
+                    ->delete();
+            }
+        }
     }
 }
