@@ -46,10 +46,6 @@ class AppServiceProvider extends ServiceProvider
             $this->app->register(TelescopeServiceProvider::class);
         }
 
-        Gate::define('viewPulse', function ($user) {
-            return $user->is_admin;
-        });
-
         // Register competition handler resolver as singleton
         $this->app->singleton(CompetitionHandlerResolver::class, function ($app) {
             $resolver = new CompetitionHandlerResolver();
@@ -71,6 +67,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::define('viewPulse', function ($user) {
+            return $user->is_admin;
+        });
+
         RateLimiter::for('game-creation', fn (Request $request) => Limit::perMinute(5)->by($request->user()?->id ?: $request->ip()));
         RateLimiter::for('tournament-simulation', fn (Request $request) => Limit::perMinute(3)->by($request->user()?->id ?: $request->ip()));
 
