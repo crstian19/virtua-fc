@@ -7,9 +7,9 @@ use App\Modules\Season\DTOs\SeasonTransitionData;
 use App\Modules\Competition\Services\CountryConfig;
 use App\Models\Competition;
 use App\Models\CompetitionEntry;
+use App\Models\CompetitionTeam;
 use App\Models\CupTie;
 use App\Models\Game;
-use App\Models\GamePlayer;
 use App\Models\GameStanding;
 use App\Models\SimulatedSeason;
 use App\Models\Team;
@@ -43,14 +43,18 @@ class UefaQualificationProcessor implements SeasonProcessor
 
     public function process(Game $game, SeasonTransitionData $data): SeasonTransitionData
     {
-        $this->clearSwissFormatEntries($game);
+        $swissCompetitionIds = Competition::where('handler_type', 'swiss_format')
+            ->pluck('id')
+            ->toArray();
+
+        $this->clearSwissFormatEntries($game, $swissCompetitionIds);
 
         foreach ($this->countryConfig->allCountryCodes() as $countryCode) {
             $this->processCountry($game, $countryCode);
         }
 
         $this->qualifyUelWinner($game, $data);
-        $this->fillRemainingContinentalSlots($game);
+        $this->fillRemainingContinentalSlots($game, $swissCompetitionIds);
 
         return $data;
     }
@@ -61,12 +65,8 @@ class UefaQualificationProcessor implements SeasonProcessor
      * Without this, filler teams from the previous season persist across seasons
      * because writeQualifications() only removes teams from configured countries.
      */
-    private function clearSwissFormatEntries(Game $game): void
+    private function clearSwissFormatEntries(Game $game, array $swissCompetitionIds): void
     {
-        $swissCompetitionIds = Competition::where('handler_type', 'swiss_format')
-            ->pluck('id')
-            ->toArray();
-
         if (!empty($swissCompetitionIds)) {
             CompetitionEntry::where('game_id', $game->id)
                 ->whereIn('competition_id', $swissCompetitionIds)
@@ -243,20 +243,19 @@ class UefaQualificationProcessor implements SeasonProcessor
     {
         $countryTeamIds = Team::where('country', $countryCode)->pluck('id')->toArray();
 
-        // Group qualifications by competition
+        // Group qualifications by competition, skipping any that don't exist
+        // (e.g. UECL is in config but may not be seeded yet)
         $byCompetition = [];
         foreach ($qualifications as $teamId => $competitionId) {
             $byCompetition[$competitionId][] = $teamId;
         }
 
-        // Validate competition IDs exist
         $validCompetitionIds = Competition::whereIn('id', array_keys($byCompetition))->pluck('id')->toArray();
 
         foreach ($byCompetition as $competitionId => $teamIds) {
             if (!in_array($competitionId, $validCompetitionIds)) {
                 continue;
             }
-
             // Remove old teams from this country from the competition
             CompetitionEntry::where('game_id', $gameId)
                 ->where('competition_id', $competitionId)
@@ -312,17 +311,12 @@ class UefaQualificationProcessor implements SeasonProcessor
             ->filter(fn (string $code) => !empty($this->countryConfig->continentalSlots($code)))
             ->all();
 
-        $uclEntries = CompetitionEntry::where('game_id', $game->id)
-            ->where('competition_id', 'UCL')
+        $replaceable = CompetitionEntry::where('competition_entries.game_id', $game->id)
+            ->where('competition_entries.competition_id', 'UCL')
+            ->join('teams', 'competition_entries.team_id', '=', 'teams.id')
+            ->whereNotIn('teams.country', $configuredCountries)
+            ->select('competition_entries.*')
             ->get();
-
-        $uclTeamIds = $uclEntries->pluck('team_id')->toArray();
-        $teams = Team::whereIn('id', $uclTeamIds)->get()->keyBy('id');
-
-        $replaceable = $uclEntries->filter(function (CompetitionEntry $entry) use ($configuredCountries, $teams) {
-            $team = $teams->get($entry->team_id);
-            return $team && !in_array($team->country, $configuredCountries);
-        });
 
         if ($replaceable->isNotEmpty()) {
             // Remove a random non-configured-country team
@@ -349,15 +343,11 @@ class UefaQualificationProcessor implements SeasonProcessor
     /**
      * Fill remaining continental slots to reach 36 teams per swiss_format competition.
      *
-     * Selects teams with GamePlayer records, ranked by average market value,
-     * excluding teams already in any swiss_format competition.
+     * Selects European teams (from competitions with country='EU') that are not
+     * already in any swiss_format competition.
      */
-    private function fillRemainingContinentalSlots(Game $game): void
+    private function fillRemainingContinentalSlots(Game $game, array $swissCompetitionIds): void
     {
-        $swissCompetitionIds = Competition::where('handler_type', 'swiss_format')
-            ->pluck('id')
-            ->toArray();
-
         if (empty($swissCompetitionIds)) {
             return;
         }
@@ -366,6 +356,15 @@ class UefaQualificationProcessor implements SeasonProcessor
         $usedTeamIds = CompetitionEntry::where('game_id', $game->id)
             ->whereIn('competition_id', $swissCompetitionIds)
             ->pluck('team_id')
+            ->toArray();
+
+        // European team pool: teams registered in any competition with country='EU'
+        $europeanTeamPool = CompetitionTeam::query()
+            ->join('competitions', 'competition_teams.competition_id', '=', 'competitions.id')
+            ->where('competitions.country', 'EU')
+            ->whereNotIn('competition_teams.team_id', $usedTeamIds)
+            ->distinct()
+            ->pluck('competition_teams.team_id')
             ->toArray();
 
         foreach ($swissCompetitionIds as $competitionId) {
@@ -378,16 +377,7 @@ class UefaQualificationProcessor implements SeasonProcessor
                 continue;
             }
 
-            // Find filler teams: have GamePlayer records, not in any swiss competition
-            $fillerTeams = GamePlayer::where('game_id', $game->id)
-                ->whereNotNull('team_id')
-                ->whereNotIn('team_id', $usedTeamIds)
-                ->groupBy('team_id')
-                ->selectRaw('team_id, AVG(market_value_cents) as avg_value')
-                ->orderByDesc('avg_value')
-                ->limit($needed)
-                ->pluck('team_id')
-                ->toArray();
+            $fillerTeams = array_slice($europeanTeamPool, 0, $needed);
 
             if (!empty($fillerTeams)) {
                 $rows = array_map(fn (string $teamId) => [
@@ -403,8 +393,8 @@ class UefaQualificationProcessor implements SeasonProcessor
                     ['entry_round']
                 );
 
-                // Track used teams across competitions
-                $usedTeamIds = array_merge($usedTeamIds, $fillerTeams);
+                // Remove used teams from pool for next competition
+                $europeanTeamPool = array_values(array_diff($europeanTeamPool, $fillerTeams));
             }
         }
     }

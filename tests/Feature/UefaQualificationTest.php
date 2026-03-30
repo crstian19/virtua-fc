@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Competition;
 use App\Models\CompetitionEntry;
+use App\Models\CompetitionTeam;
 use App\Models\CupTie;
 use App\Models\Game;
 use App\Models\GamePlayer;
@@ -44,6 +45,16 @@ class UefaQualificationTest extends TestCase
         Competition::factory()->league()->create(['id' => 'ITA1', 'country' => 'IT', 'tier' => 1]);
         Competition::factory()->league()->create(['id' => 'FRA1', 'country' => 'FR', 'tier' => 1]);
 
+        // EUR team pool competition
+        Competition::factory()->create([
+            'id' => 'EUR',
+            'name' => 'European Pool',
+            'country' => 'EU',
+            'type' => 'league',
+            'role' => Competition::ROLE_TEAM_POOL,
+            'handler_type' => 'team_pool',
+        ]);
+
         // Swiss format competitions
         Competition::factory()->create([
             'id' => 'UCL',
@@ -57,6 +68,15 @@ class UefaQualificationTest extends TestCase
         Competition::factory()->create([
             'id' => 'UEL',
             'name' => 'Europa League',
+            'country' => 'EU',
+            'type' => 'cup',
+            'role' => Competition::ROLE_EUROPEAN,
+            'scope' => Competition::SCOPE_CONTINENTAL,
+            'handler_type' => 'swiss_format',
+        ]);
+        Competition::factory()->create([
+            'id' => 'UECL',
+            'name' => 'Conference League',
             'country' => 'EU',
             'type' => 'cup',
             'role' => Competition::ROLE_EUROPEAN,
@@ -81,14 +101,23 @@ class UefaQualificationTest extends TestCase
         $this->createCountryTeamsWithStandings('IT', 'ITA1', 20);
         $this->createCountryTeamsWithStandings('FR', 'FRA1', 18);
 
-        // Create EUR pool teams (non-configured countries) — enough to fill both UCL and UEL
+        // Create EUR pool teams (non-configured countries) — enough to fill UCL, UEL, and UECL
+        // Need ~75 filler teams (108 total slots minus 33 from configured countries)
         $eurCountries = ['PT', 'NL', 'BE', 'TR', 'GR', 'AT', 'PL', 'CZ', 'RO', 'RS', 'HR', 'NO', 'CH', 'IL', 'DK', 'SE', 'UA', 'SC'];
-        foreach ($eurCountries as $i => $country) {
+        for ($i = 0; $i < 80; $i++) {
+            $country = $eurCountries[$i % count($eurCountries)];
             $team = Team::factory()->create(['country' => $country]);
             $this->eurPoolTeams[] = $team;
 
-            // Create GamePlayer records so fillRemainingContinentalSlots can find them
-            $this->createPlayersForTeam($team, 5_000_000_00 - ($i * 100_000_00));
+            // Register in the EUR competition pool
+            CompetitionTeam::create([
+                'competition_id' => 'EUR',
+                'team_id' => $team->id,
+                'season' => '2025',
+            ]);
+
+            // Create GamePlayer records for squad presence
+            $this->createPlayersForTeam($team, 5_000_000_00 - ($i * 50_000_00));
         }
 
         // Seed initial CompetitionEntry records for UCL and UEL
@@ -273,6 +302,39 @@ class UefaQualificationTest extends TestCase
         );
     }
 
+    public function test_non_european_teams_are_not_selected_as_fillers(): void
+    {
+        // Create non-European teams with GamePlayer records (e.g. from World Cup)
+        $nonEuropeanTeams = [];
+        foreach (['BR', 'AR', 'MX', 'JP', 'KR'] as $country) {
+            $team = Team::factory()->create(['country' => $country]);
+            $nonEuropeanTeams[] = $team;
+            $this->createPlayersForTeam($team, 99_999_999_99); // Very high value
+        }
+
+        $processor = app(UefaQualificationProcessor::class);
+        $data = new SeasonTransitionData(
+            oldSeason: '2025',
+            newSeason: '2026',
+            competitionId: 'ESP1',
+        );
+
+        $processor->process($this->game, $data);
+
+        $swissEntryTeamIds = CompetitionEntry::where('game_id', $this->game->id)
+            ->whereIn('competition_id', ['UCL', 'UEL'])
+            ->pluck('team_id')
+            ->toArray();
+
+        foreach ($nonEuropeanTeams as $team) {
+            $this->assertNotContains(
+                $team->id,
+                $swissEntryTeamIds,
+                "Non-European team {$team->country} should not be in any UEFA competition"
+            );
+        }
+    }
+
     // =========================================
     // Helpers
     // =========================================
@@ -323,9 +385,8 @@ class UefaQualificationTest extends TestCase
      */
     private function seedInitialContinentalEntries(): void
     {
-        // UCL entries from configured countries based on continental_slots
-        $uclFromConfig = [];
-        $uelFromConfig = [];
+        // Group entries by competition from configured countries
+        $byCompetition = []; // competitionId => [teamIds]
 
         foreach (['ES', 'EN', 'DE', 'IT', 'FR'] as $country) {
             $slots = $this->countryConfig->continentalSlots($country);
@@ -336,60 +397,37 @@ class UefaQualificationTest extends TestCase
                         if (!isset($this->teamsByCountry[$country][$teamIndex])) {
                             continue;
                         }
-                        $teamId = $this->teamsByCountry[$country][$teamIndex]->id;
-
-                        if ($continentalId === 'UCL') {
-                            $uclFromConfig[] = $teamId;
-                        } elseif ($continentalId === 'UEL') {
-                            $uelFromConfig[] = $teamId;
-                        }
+                        $byCompetition[$continentalId][] = $this->teamsByCountry[$country][$teamIndex]->id;
                     }
                 }
             }
         }
 
-        // Add configured-country teams
-        foreach ($uclFromConfig as $teamId) {
-            CompetitionEntry::create([
-                'game_id' => $this->game->id,
-                'competition_id' => 'UCL',
-                'team_id' => $teamId,
-                'entry_round' => 1,
-            ]);
-        }
-
-        foreach ($uelFromConfig as $teamId) {
-            CompetitionEntry::create([
-                'game_id' => $this->game->id,
-                'competition_id' => 'UEL',
-                'team_id' => $teamId,
-                'entry_round' => 1,
-            ]);
+        // Add configured-country teams to each competition
+        foreach ($byCompetition as $competitionId => $teamIds) {
+            foreach ($teamIds as $teamId) {
+                CompetitionEntry::create([
+                    'game_id' => $this->game->id,
+                    'competition_id' => $competitionId,
+                    'team_id' => $teamId,
+                    'entry_round' => 1,
+                ]);
+            }
         }
 
         // Fill remaining slots with EUR pool teams
-        $uclNeeded = 36 - count($uclFromConfig);
-        $uelNeeded = 36 - count($uelFromConfig);
         $poolIndex = 0;
-
-        for ($i = 0; $i < $uclNeeded && $poolIndex < count($this->eurPoolTeams); $i++) {
-            CompetitionEntry::create([
-                'game_id' => $this->game->id,
-                'competition_id' => 'UCL',
-                'team_id' => $this->eurPoolTeams[$poolIndex]->id,
-                'entry_round' => 1,
-            ]);
-            $poolIndex++;
-        }
-
-        for ($i = 0; $i < $uelNeeded && $poolIndex < count($this->eurPoolTeams); $i++) {
-            CompetitionEntry::create([
-                'game_id' => $this->game->id,
-                'competition_id' => 'UEL',
-                'team_id' => $this->eurPoolTeams[$poolIndex]->id,
-                'entry_round' => 1,
-            ]);
-            $poolIndex++;
+        foreach (['UCL', 'UEL', 'UECL'] as $competitionId) {
+            $needed = 36 - count($byCompetition[$competitionId] ?? []);
+            for ($i = 0; $i < $needed && $poolIndex < count($this->eurPoolTeams); $i++) {
+                CompetitionEntry::create([
+                    'game_id' => $this->game->id,
+                    'competition_id' => $competitionId,
+                    'team_id' => $this->eurPoolTeams[$poolIndex]->id,
+                    'entry_round' => 1,
+                ]);
+                $poolIndex++;
+            }
         }
     }
 }
