@@ -66,7 +66,7 @@ class TransferService
      * Maximum transfer fee as a fraction of the buying team's squad value.
      * Prevents small clubs from making unrealistically large bids.
      */
-    private const MAX_FEE_TO_SQUAD_VALUE_RATIO = 0.25;
+    private const MAX_FEE_TO_SQUAD_VALUE_RATIO = 0.15;
 
     /**
      * Default chance of pre-contract offer per expiring player per matchday.
