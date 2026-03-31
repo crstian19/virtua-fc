@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect fill="#dc2626" x="4" y="4" width="24" height="24" rx="2" transform="skewX(-12)" transform-origin="center"/>
-  <text fill="white" font-family="'Barlow Semi Condensed', 'Arial Black', sans-serif" font-weight="800" font-size="20" x="16" y="23" text-anchor="middle">V</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="24" height="24" x="4" y="4" fill="#dc2626" rx="2" transform="skewX(-12)" transform-origin="center"/><text x="16" y="23" fill="#fff" font-family="'Barlow Semi Condensed', 'Arial Black', sans-serif" font-size="20" font-weight="800" text-anchor="middle">V</text></svg>
