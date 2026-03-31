@@ -17,7 +17,7 @@ class RequestLoan
     public function __invoke(Request $request, string $gameId, string $playerId)
     {
         $game = Game::with(['team', 'finances'])->findOrFail($gameId);
-        $player = GamePlayer::with(['player', 'team'])->findOrFail($playerId);
+        $player = GamePlayer::where('game_id', $gameId)->with(['player', 'team'])->findOrFail($playerId);
 
         // Determine if this is loan-in (from scouting) or loan-out (from squad)
         $isLoanOut = $player->team_id === $game->team_id;
