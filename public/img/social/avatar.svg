@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <rect width="1024" height="1024" fill="#0B1120"/>
-  <polygon fill="#dc2626" points="153,393 921,393 871,631 103,631"/>
-  <text fill="#fff" font-family="'Barlow Semi Condensed', 'Arial Black', sans-serif" font-weight="800" font-size="166" x="512" y="572" text-anchor="middle">Virtua FC</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#0B1120"/><polygon fill="#dc2626" points="153 393 921 393 871 631 103 631"/><text x="512" y="572" fill="#fff" font-family="'Barlow Semi Condensed', 'Arial Black', sans-serif" font-size="166" font-weight="800" text-anchor="middle">Virtua FC</text></svg>
